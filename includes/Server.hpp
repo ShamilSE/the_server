@@ -31,7 +31,7 @@ class Server
 		std::string	_makeDefaultPage();
 		std::string	_checkType(const std::string &);
 		bool		_findFile(std::string &, std::string &);
-		void		_readChunke(const int &);
+		void		_readChunke(const int &, fd_set&, fd_set&);
 		void		_checkChunke(const int &);
 		void		_isEndOfChunke(const int &);
 		bool		_isMethodAllow(const location &, const std::string &);
@@ -62,7 +62,7 @@ class Server
 		Client					getClient(const int &);
 
 		void					acceptNewClient();
-		void					readRequest(const int &itC);
+		void					readRequest(const int &itC, fd_set&, fd_set&);
 		void					sendResponse(const int &);
 
 		 bool					isClientRequest(const int &);

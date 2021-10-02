@@ -206,7 +206,7 @@ void	Server::_isEndOfChunke(const int &itC)
 	// return false;
 }
 
-void	Server::_readChunke(const int &itC)
+void	Server::_readChunke(const int &itC, fd_set& rfds, fd_set& wfds)
 {
 	Client			&client = _clients[itC];
 	char			buff[2];
@@ -224,14 +224,15 @@ void	Server::_readChunke(const int &itC)
 			buff[bytesRead] = '\0';
 			content += buff;
 		}
-		// else if (bytesRead == 0)
-		// {
-		// 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-		// 	close(client.getSockFd());
-		// 	_clients.erase(_clients.begin() + itC);
-		// 	client.setStatus(CLOSE_CONECTION);
-		// 	return ;
-		// }
+		else if (bytesRead == 0)
+		{
+			std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
+			FD_CLR(client.getSockFd(), &rfds);
+			FD_CLR(client.getSockFd(), &wfds);
+			close(client.getSockFd());
+			_clients.erase(_clients.begin() + itC);
+			return ;
+		}
 	}
 	client.setChunkeSize(std::strtol(content.c_str(), NULL, 16));
 	if (client.getChunkeSize() != 0)
@@ -250,14 +251,15 @@ void	Server::_readChunke(const int &itC)
 				client.setChunke(newBuff);
 				client.setAllChunke(newBuff);
 			}
-			// else if (bytesRead == 0)
-			// {
-			// 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-			// 	close(client.getSockFd());
-			// 	_clients.erase(_clients.begin() + itC);
-			// 	client.setStatus(CLOSE_CONECTION);
-			// 	return ;
-			// }
+			else if (bytesRead == 0)
+			{
+				std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
+				FD_CLR(client.getSockFd(), &rfds);
+				FD_CLR(client.getSockFd(), &wfds);
+				close(client.getSockFd());
+				_clients.erase(_clients.begin() + itC);
+				return ;
+			}
 		}
 		content = "";
 		size_t pos;
@@ -270,14 +272,15 @@ void	Server::_readChunke(const int &itC)
 				buff[bytesRead] = '\0';
 				content += buff;
 			}
-			// else if (bytesRead == 0)
-			// {
-			// 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-			// 	close(client.getSockFd());
-			// 	_clients.erase(_clients.begin() + itC);
-			// 	client.setStatus(CLOSE_CONECTION);
-			// 	return ;
-			// }
+			else if (bytesRead == 0)
+			{
+				std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
+				FD_CLR(client.getSockFd(), &rfds);
+				FD_CLR(client.getSockFd(), &wfds);
+				close(client.getSockFd());
+				_clients.erase(_clients.begin() + itC);
+				return ;
+			}
 		}
 		std::cout << "\033[1;35m\t\tchunked request from client (";
 		std::cout << client;
@@ -297,14 +300,15 @@ void	Server::_readChunke(const int &itC)
 				buff[bytesRead] = '\0';
 				content += buff;
 			}
-			// else if (bytesRead == 0)
-			// {
-			// 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-			// 	close(client.getSockFd());
-			// 	_clients.erase(_clients.begin() + itC);
-			// 	client.setStatus(CLOSE_CONECTION);
-			// 	return ;
-			// }
+			else if (bytesRead == 0)
+			{
+				std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
+				FD_CLR(client.getSockFd(), &rfds);
+				FD_CLR(client.getSockFd(), &wfds);
+				close(client.getSockFd());
+				_clients.erase(_clients.begin() + itC);
+				return ;
+			}
 		}
 		client.clearChunke();
 		client.setChunke(content);
@@ -312,14 +316,14 @@ void	Server::_readChunke(const int &itC)
 	}
 }
 
-void	Server::readRequest(const int &itC)
+void	Server::readRequest(const int &itC, fd_set& rfds, fd_set& wfds)
 {
 	Client	&client = _clients[itC];
 	char	buff[2];
 	int		bytesRead;
 
 	if (client.getStatus() == CHUNKED)
-		_readChunke(itC);
+		_readChunke(itC, rfds, wfds);
 	else
 	{
 		std::string allRequest = "";
@@ -334,10 +338,9 @@ void	Server::readRequest(const int &itC)
 			else if (bytesRead == 0)
 			{
 				std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-				// FD_CLR(client.getSockFd(), &rFds);
-				// FD_CLR(client.getSockFd(), &wFds);
+				FD_CLR(client.getSockFd(), &rfds);
+				FD_CLR(client.getSockFd(), &wfds);
 				close(client.getSockFd());
-				client.setStatus(CLOSE_CONECTION);
 				client.clearResponse();
 				_clients.erase(_clients.begin() + itC);
 				return ;

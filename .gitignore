@@ -1,0 +1,7 @@
+.idea
+.obj
+.vscode
+a.out*
+webserv
+.DS_Store
+file

@@ -62,7 +62,7 @@ class Server
 		Client					getClient(const int &);
 
 		void					acceptNewClient();
-		void					readRequest(const int &itC, fd_set rFds, fd_set wFds);
+		void					readRequest(const int &itC);
 		void					sendResponse(const int &);
 
 		 bool					isClientRequest(const int &);

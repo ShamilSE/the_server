@@ -98,7 +98,7 @@ void	WebServ::mainCycly()
 				clientFd = itS->getClientSockFd(itC);
 				if (FD_ISSET(clientFd, &_rFds))
 				{
-					itS->readRequest(itC, _rFds, _wFds);
+					itS->readRequest(itC);
 					if (itS->getClientStatus(itC) == CLOSE_CONECTION)
 					{
 						FD_CLR(itS->getClientSockFd(itC), &_rFds);

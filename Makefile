@@ -24,7 +24,7 @@ NAME	=	webserv
 
 CC		=	clang++
 
-CFLAGS	=	-Wall -Wextra -Werror -std=c++98
+CFLAGS	=	-Wall -Wextra -Werror -std=c++98 -g
 
 # CFLAGS   +=   -g -Wshadow -Wno-shadow -Wshadow-uncaptured-local \
 #          -Waddress -Wchar-subscripts -Wuninitialized -Wpedantic \

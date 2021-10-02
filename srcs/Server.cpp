@@ -312,7 +312,7 @@ void	Server::_readChunke(const int &itC)
 	}
 }
 
-void	Server::readRequest(const int &itC, fd_set rFds, fd_set wFds)
+void	Server::readRequest(const int &itC)
 {
 	Client	&client = _clients[itC];
 	char	buff[2];

@@ -111,7 +111,15 @@ void	WebServ::mainCycly()
 			{
 				if (itS->readRequest(itC) == 0)
 				{
-					break;
+					// itS->readRequest(itC);
+					// if (itS->getClientStatus(itC) == CLOSE_CONECTION)
+					// {
+						FD_CLR(clientFd, &_rFds);
+						FD_CLR(clientFd, &_wFds);
+						close(clientFd);
+						itS->eraseClient(itC);
+						break ;
+					// }
 				}
 			}
 			if (itS->isClientResponse(itC) && FD_ISSET(clientFd, &_wFds))

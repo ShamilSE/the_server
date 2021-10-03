@@ -33,7 +33,7 @@ class Server
 		bool		_findFile(std::string &, std::string &);
 		ssize_t		_readChunke(const int &);
 		void		_checkChunke(const int &);
-		void		_isEndOfChunke(const int &);
+		bool		_isEndOfChunke(const int &);
 		bool		_isMethodAllow(const location &, const std::string &);
 		void		_initEnv(int itC);
 		void		_setEnv(std::string, std::string);
@@ -71,6 +71,7 @@ class Server
 		 bool					isClientRequest(const int &);
 		 bool					isClientResponse(const int &);
 		 void					makeClientResponse(const int &);
+		 void					eraseClient(const int &);
 
 		Server&					operator = (const Server&);
 };

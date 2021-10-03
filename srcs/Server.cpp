@@ -135,8 +135,6 @@ unsigned int	Server::getClientsCount() { return _clients.size(); }
 
 int	Server::getClientSockFd(const int &itC) { return _clients[itC].getSockFd(); }
 
-// bool    Server::isClientRequest(const int &itC) { return _clients[itC].isRequest(); }
-
 void	Server::setClient(Client &client) { _clients.push_back(client); }
 
 int	Server::getClientStatus(const int &itC) { return _clients[itC].getStatus(); }
@@ -164,30 +162,6 @@ void	Server::acceptNewClient()
 	std::cout << "\033[0m" << std::endl;
 }
 
-// void	Server::_checkChunke(const int &itC)
-// {
-// 	Client	&client = _clients[itC];
-// 	std::string	body = client.getRequest().getBody();
-// 	size_t		pos;
-
-// 	if (body != "")
-// 	{
-// 		pos = body.find("\r\n");
-// 		if (pos != std::string::npos)
-// 		{
-// 			client.setChunkeSize(std::strtol(body.c_str(), NULL, 16));
-// 			client.setChunke(body.substr(pos + 2));
-// 			client.clearRequestBody();
-// 		}
-// 		pos = body.find("0\r\n\r\n\0");
-// 		if (pos != std::string::npos)
-// 		{
-// 			client.clearRequestBody();
-// 			client.setRequestBody(client.getChunke());
-// 		}
-// 	}
-// }
-
 void	Server::_isEndOfChunke(const int &itC)
 {
 	Client			&client = _clients[itC];
@@ -201,12 +175,10 @@ void	Server::_isEndOfChunke(const int &itC)
 		client.clearChunke();
 		client.clearAllChunke();
 		client.clearChunkeSize();
-		// return true;
 	}
-	// return false;
 }
 
-void	Server::_readChunke(const int &itC)
+ssize_t	Server::_readChunke(const int &itC)
 {
 	Client			&client = _clients[itC];
 	char			buff[2];
@@ -224,14 +196,13 @@ void	Server::_readChunke(const int &itC)
 			buff[bytesRead] = '\0';
 			content += buff;
 		}
-		// else if (bytesRead == 0)
-		// {
-		// 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-		// 	close(client.getSockFd());
-		// 	_clients.erase(_clients.begin() + itC);
-		// 	client.setStatus(CLOSE_CONECTION);
-		// 	return ;
-		// }
+		else if (bytesRead == 0)
+		{
+			std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
+			close(client.getSockFd());
+			_clients.erase(_clients.begin() + itC);
+			return bytesRead;
+		}
 	}
 	client.setChunkeSize(std::strtol(content.c_str(), NULL, 16));
 	if (client.getChunkeSize() != 0)
@@ -250,14 +221,13 @@ void	Server::_readChunke(const int &itC)
 				client.setChunke(newBuff);
 				client.setAllChunke(newBuff);
 			}
-			// else if (bytesRead == 0)
-			// {
-			// 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-			// 	close(client.getSockFd());
-			// 	_clients.erase(_clients.begin() + itC);
-			// 	client.setStatus(CLOSE_CONECTION);
-			// 	return ;
-			// }
+			else if (bytesRead == 0)
+			{
+				std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
+				close(client.getSockFd());
+				_clients.erase(_clients.begin() + itC);
+				return bytesRead;
+			}
 		}
 		content = "";
 		size_t pos;
@@ -270,14 +240,13 @@ void	Server::_readChunke(const int &itC)
 				buff[bytesRead] = '\0';
 				content += buff;
 			}
-			// else if (bytesRead == 0)
-			// {
-			// 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-			// 	close(client.getSockFd());
-			// 	_clients.erase(_clients.begin() + itC);
-			// 	client.setStatus(CLOSE_CONECTION);
-			// 	return ;
-			// }
+			else if (bytesRead == 0)
+			{
+				std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
+				close(client.getSockFd());
+				_clients.erase(_clients.begin() + itC);
+				return bytesRead;
+			}
 		}
 		std::cout << "\033[1;35m\t\tchunked request from client (";
 		std::cout << client;
@@ -297,35 +266,36 @@ void	Server::_readChunke(const int &itC)
 				buff[bytesRead] = '\0';
 				content += buff;
 			}
-			// else if (bytesRead == 0)
-			// {
-			// 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-			// 	close(client.getSockFd());
-			// 	_clients.erase(_clients.begin() + itC);
-			// 	client.setStatus(CLOSE_CONECTION);
-			// 	return ;
-			// }
+			else if (bytesRead == 0)
+			{
+				std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
+				close(client.getSockFd());
+				_clients.erase(_clients.begin() + itC);
+				return bytesRead;
+			}
 		}
 		client.clearChunke();
 		client.setChunke(content);
 		_isEndOfChunke(itC);
 	}
+	return bytesRead;
 }
 
-void	Server::readRequest(const int &itC)
+ssize_t	Server::readRequest(const int &itC)
 {
+	size_t	buffer_size = 100;
 	Client	&client = _clients[itC];
-	char	buff[2];
+	char	buff[buffer_size];
 	int		bytesRead;
 
 	if (client.getStatus() == CHUNKED)
-		_readChunke(itC);
+		return _readChunke(itC);
 	else
 	{
 		std::string allRequest = "";
 		while (allRequest.find("\r\n\r\n") == std::string::npos)
 		{
-			bytesRead = recv(client.getSockFd(), buff, 1, 0);
+			bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
 			if (bytesRead > 0)
 			{
 				buff[bytesRead] = '\0';
@@ -334,22 +304,12 @@ void	Server::readRequest(const int &itC)
 			else if (bytesRead == 0)
 			{
 				std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
-				// FD_CLR(client.getSockFd(), &rFds);
-				// FD_CLR(client.getSockFd(), &wFds);
 				close(client.getSockFd());
-				client.setStatus(CLOSE_CONECTION);
 				client.clearResponse();
 				_clients.erase(_clients.begin() + itC);
-				return ;
+				return bytesRead;
 			}
-			// else if (bytesRead == -1 )
-			// 	throw std::string("recv err");
-			// usleep(1);
 		}
-		// std::cout << "\033[1;35m\t\trequest from client (";
-		// std::cout << client;
-		// std::cout << ")\033[0m" << std::endl;
-		// std::cout << allRequest << std::endl;
 		client.setRequest(allRequest);
 		client.parseRequestHeader();
 		if (client.getRequest().getHeaderByKey("Content-Length") != "")
@@ -362,6 +322,7 @@ void	Server::readRequest(const int &itC)
 			client.setStatus(WAITING_FOR_RESPONSE);
 		}
 	}
+	return bytesRead;
 }
 
 void	Server::makeClientResponse(const int &itC)
@@ -575,9 +536,6 @@ void		Server::_executeCGI(int itC) {
 			perror("execve");
 			exit(1);
 		}
-		// std::string body = _clients[itC].getRequest().getBody();
-		// if (body != "")
-		// 	write(1, body.c_str(),body.size());
 		std::cerr << "after execve\n";
 	}
 	if (dup2(save_stdout, STDOUT_FILENO) == -1) {
@@ -771,7 +729,6 @@ void		Server::_methodGet(const int &itC)
 		in.close();
 		content = ssbuff.str();
 	}
-	// std::cout << "location: " << location.name << std::endl;
 	client.setResponseContent(content);
 }
 
@@ -779,7 +736,6 @@ void		Server::sendResponse(const int &itC)
 {
 	Client				&client = _clients[itC];
 	ssize_t				bytesSend = 0;
-	// size_t				allBytesSend = client.getAllBytesSend();
 	std::string			buff(client.getResponse().substr(client.getAllBytesSend()));
 
 	bytesSend = send(client.getSockFd(), buff.c_str(), buff.size(), 0);
@@ -787,21 +743,11 @@ void		Server::sendResponse(const int &itC)
 		client.addAllBytesSend(bytesSend);
 	else if (bytesSend == -1)
 		throw std::string("send err");
-	// std::cout << "\033[1;35m\t\tbytes send " << bytesSend << "\033[0m" << std::endl;
-	// allBytesSend += bytesSend;
-	// if (size_t(bytesSend) == buff.size())
 	if (client.getAllBytesSend() == client.getResponse().size())
 	{
-		// std::cout << "\033[1;35m\t\tresponse for client (";
-		// std::cout << client;
-		// std::cout << ")\033[0m" << std::endl;
-		// std::cout << client.getResponseHeader() << std::endl;
-		// std::cout << "\033[1;35m\t\tbytes send " << allBytesSend << "\033[0m" << std::endl;
 		client.clearRequest();
 		client.clearResponse();
 		client.setAllBytesSend(0);
-		// client.setStatus(NEW_CLIENT);
-		// allBytesSend = 0;
 	}
 }
 

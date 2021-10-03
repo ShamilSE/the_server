@@ -70,7 +70,6 @@ void	WebServ::_setFds()
 
 void	WebServ::_select()
 {
-	// if (select(_maxFd + 1, &_rFds, nullptr, nullptr, nullptr) < 1)
 	if (select(_maxFd + 1, &_rFds, &_wFds, nullptr, nullptr) < 1)
 	{
 		if (errno != EINTR)
@@ -89,26 +88,20 @@ void	WebServ::mainCycly()
 		_setFds();
 		_select();
 		std::vector<Server>::iterator itS = _servers.begin();
-		for ( ; itS != _servers.end(); ++itS)
+		if (FD_ISSET(itS->getSockFd(), &_rFds))
+			itS->acceptNewClient();
+		for (size_t itC = 0; itC < itS->getClientsCount(); ++itC)
 		{
-			if (FD_ISSET(itS->getSockFd(), &_rFds))
-				itS->acceptNewClient();
-			for (size_t itC = 0; itC < itS->getClientsCount(); ++itC)
+			clientFd = itS->getClientSockFd(itC);
+			if (FD_ISSET(clientFd, &_rFds))
 			{
-				clientFd = itS->getClientSockFd(itC);
-				if (FD_ISSET(clientFd, &_rFds))
+				if (itS->readRequest(itC) == 0)
 				{
-					itS->readRequest(itC);
-					if (itS->getClientStatus(itC) == CLOSE_CONECTION)
-					{
-						FD_CLR(itS->getClientSockFd(itC), &_rFds);
-						FD_CLR(itS->getClientSockFd(itC), &_wFds);
-						break ;
-					}
+					break;
 				}
-				if (itS->isClientResponse(itC) && FD_ISSET(clientFd, &_wFds))
-					itS->sendResponse(itC);
 			}
+			if (itS->isClientResponse(itC) && FD_ISSET(clientFd, &_wFds))
+				itS->sendResponse(itC);
 		}
 	}
 }

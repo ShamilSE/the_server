@@ -31,6 +31,20 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 		tmpStrVec.push_back(tmpStr);
 	}
 	_servers.push_back(Server(tmpStrVec));
+	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+	{
+		try
+		{
+			it->getErrorByKey(404);
+		}
+		catch (std::out_of_range &error)
+		{
+			std::cout << "no error page provided" << std::endl;
+			std::cout << "default error page will be used" << std::endl;
+			it->setError(404, "./Servers/404.html");
+		}
+		std::cout << "server" << std::endl;
+	}
 }
 
 WebServ::WebServ(const WebServ &other) { *this = other; }

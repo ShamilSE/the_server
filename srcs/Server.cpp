@@ -606,8 +606,6 @@ void		Server::_methodPost(const int &itC)	//	!!!
 				return ;
 			}
 		}
-		// std::cout << "path: " << path << std::endl;
-		// std::cout << "url: " << url << std::endl;
 		std::ofstream 	out;
 		out.open(url);
 		if (!out.is_open())
@@ -637,7 +635,6 @@ void		Server::_methodGet(const int &itC)
 	std::ifstream 			in;
 	location				location;
 
-	// std::cout << "url: " << url << std::endl;
 	if (url != "/" && url.back() == '/')
 		url.pop_back();
 	for (size_t i = 0; i < _locations.size(); ++i)
@@ -676,6 +673,8 @@ void		Server::_methodGet(const int &itC)
 	}
 	if (_isMethodAllow(location, client.getRequest().getMethod()))
 		client.setResponseStatus("200 OK");
+	else if (url != location.name)
+		client.setResponseStatus("404 Not Found");
 	else
 	{
 		client.setResponseStatus("405 Method Not Allowed");
@@ -721,7 +720,6 @@ void		Server::_methodGet(const int &itC)
 		client.setResponseStatus("404 Not Found");
 	if (content.empty())
 	{
-		// std::cout << "path: " << path << std::endl;
 		in.open(path);
 		if (!in.is_open())
 			throw std::string("open err");
@@ -872,3 +870,6 @@ void	Server::_CGI(const int &itC)
 		}
 	}
 }
+
+std::string	Server::getErrorByKey(int key) {return _errors.at(key);}
+void		Server::setError(int key, std::string value) {_errors[key] = value;}

@@ -60,6 +60,9 @@ class Server
 		int						getClientSockFd(const int &);
 		int						getClientStatus(const int &);
 		Client					getClient(const int &);
+		std::string				getErrorByKey(int);
+		void					setError(int, std::string);
+
 
 		void					acceptNewClient();
 		ssize_t					readRequest(const int &itC);

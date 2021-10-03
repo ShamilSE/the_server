@@ -8,9 +8,9 @@ class Response;
 
 enum	Status
 {
+	CLOSE_CONECTION,
 	NEW_CLIENT,
 	WAITING_FOR_RESPONSE,
-	CLOSE_CONECTION,
 	CHUNKED,
 	PARTIAL_CONTENT,
 };
@@ -62,7 +62,7 @@ class Client
 
 		size_t			getChunkeSize() { return _chunkeSize; }
 		void			setChunkeSize(const size_t &size) { _chunkeSize = size; }
-		void			setChunke(const std::string &chunke) { _chunke += chunke; }
+		void			addChunkePart(const std::string &chunke) { _chunke += chunke; }
 		std::string		getChunke() { return _chunke; }
 		void			clearChunke()
 		{
@@ -74,7 +74,7 @@ class Client
 		std::string		getResponseHeader();
 
 		void			clearChunkeSize() { _chunkeSize = 0; }
-		void			setAllChunke(const std::string &chunke) { _allChanke += chunke; }
+		void			addAllChunke(const std::string &chunke) { _allChanke += chunke; }
 		std::string		getAllChunke() { return _allChanke; }
 		void			clearAllChunke() { _allChanke.clear(); }
 

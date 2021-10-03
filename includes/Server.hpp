@@ -33,7 +33,7 @@ class Server
 		bool		_findFile(std::string &, std::string &);
 		void		_readChunke(const int &);
 		void		_checkChunke(const int &);
-		void		_isEndOfChunke(const int &);
+		bool		_isEndOfChunke(const int &);
 		bool		_isMethodAllow(const location &, const std::string &);
 		void		_initEnv(int itC);
 		void		_setEnv(std::string, std::string);
@@ -62,12 +62,13 @@ class Server
 		Client					getClient(const int &);
 
 		void					acceptNewClient();
-		void					readRequest(const int &itC, fd_set rFds, fd_set wFds);
+		void					readRequest(const int &itC);
 		void					sendResponse(const int &);
 
 		 bool					isClientRequest(const int &);
 		 bool					isClientResponse(const int &);
 		 void					makeClientResponse(const int &);
+		 void					eraseClient(const int &);
 
 		Server&					operator = (const Server&);
 };

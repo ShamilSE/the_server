@@ -2,6 +2,7 @@
 
 Client::Client() : _sockFd(-1), _addrLen(sizeof(sockaddr_in)), _request(Request()), _chunke(""), _chunkeSize(0), _allBytesSend(0)
 {
+	bzero(&_chunkeSize, sizeof(_chunkeSize));
 	bzero(&_addr, _addrLen);
 }
 
@@ -55,6 +56,11 @@ Client&			Client::operator = (const Client &other)
 		this->_addr = other._addr;
 		this->_addrLen = other._addrLen;
 		this->_request = other._request;
+		this->_response = other._response;
+		this->_chunke = other._chunke;
+		this->_chunkeSize = other._chunkeSize;
+		this->_allChanke = other._allChanke;
+		this->_status = other._status;
 		this->_allBytesSend = other._allBytesSend;
 	}
 	return *this;

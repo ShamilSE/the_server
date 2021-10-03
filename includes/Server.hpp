@@ -74,4 +74,5 @@ class Server
 		 void					eraseClient(const int &);
 
 		Server&					operator = (const Server&);
+		void					disconectUser(const int &itC);
 };

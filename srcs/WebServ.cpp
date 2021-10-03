@@ -111,6 +111,7 @@ void	WebServ::mainCycly()
 			{
 				if (itS->readRequest(itC) == 0)
 				{
+					itS->disconectUser(itC);
 					break;
 				}
 			}

@@ -73,4 +73,5 @@ class Server
 		 void					makeClientResponse(const int &);
 
 		Server&					operator = (const Server&);
+		void					disconectUser(const int &itC);
 };

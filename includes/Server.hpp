@@ -7,9 +7,6 @@ struct location;
 
 class Server
 {
-	public:
-		std::vector<Client>			_clients;
-
 	private:
 		int							_sockFd;
 		struct sockaddr_in			_addr;
@@ -19,7 +16,9 @@ class Server
 		bool		 				_autoIndex;
 		std::map<int, std::string>	_errors;
 		std::vector<location>		_locations;
-		char**						_char_env;
+		std::vector<Client>			_clients;
+		size_t 						_envCount;
+		char**						_env;
 
 		size_t		_parseLocation(const std::vector<std::string> &, size_t);
 		void		_methodGet(Client &);
@@ -31,7 +30,7 @@ class Server
 		std::string	_makeDefaultPage();
 		std::string	_checkType(const std::string &);
 		bool		_findFile(std::string &, std::string &);
-		ssize_t		_readChunke(Client &);
+		void		_readChunke(Client &);
 		bool		_isEndOfChunke(Client &);
 		bool		_isMethodAllow(const location &, const std::string &);
 
@@ -45,11 +44,12 @@ class Server
 		~Server();
 
 		void					acceptNewClient();
-		ssize_t					readRequest(Client &);
+		void					readRequest(Client &);
 		void					sendResponse(Client &);
 
 		int						getSockFd();
 		unsigned int			getClientsCount();
+		Client&					getClientRef(const int &);
 		int						getClientSockFd(const int &);	//	!!!
 		std::string				getErrorByKey(int);
 

@@ -1,7 +1,8 @@
 #include "../includes/Server.hpp"
 #include <dirent.h>
 
-Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index("")
+Server::Server(const std::vector<std::string> &conf)
+	: _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr)
 {
 	int reuseOpt = 1;
 
@@ -49,14 +50,14 @@ Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _
 	_addrLen = sizeof(_addr);
 	_sockFd = socket(AF_INET, SOCK_STREAM, 0);	/*	создание сокета	*/
 	if (_sockFd == -1)
-		throw std::string("sock err");
+		throw std::string("socket error");
 	fcntl(_sockFd, F_SETFL, O_NONBLOCK);	/*	перевод сокета в неблокирующий режим	*/
 	if (setsockopt(_sockFd, SOL_SOCKET, SO_REUSEADDR, &reuseOpt, sizeof(reuseOpt)) == -1)	/*	повторное использование порта	*/
-		throw std::string("setsockopt err");
+		throw std::string("setsockopt error");
 	if (bind(_sockFd, (sockaddr*)&_addr, _addrLen) == -1)	/*	привязка сокета к адресу	*/
-		throw std::string("bind err");
+		throw std::string("bind error");
 	if (listen(_sockFd, 128) == -1)	/*	перевод сокета в слушающий режим	*/
-		throw std::string("listen err");
+		throw std::string("listen error");
 	std::cout << "\033[1;35m\t\tserver: " << htons(_addr.sin_port) << " listening\033[0m" << std::endl;
 }
 
@@ -66,12 +67,10 @@ Server::~Server() {}
 
 size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 {
-	std::string					tmpStr;
-
 	if (i != conf.size())
 	{
+		std::string	tmpStr;
 		location	loc;
-
 		loc.root = _root;
 		loc.index = _index;
 		loc.autoIndex = _autoIndex;
@@ -114,7 +113,6 @@ size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 			if (conf[i].find("redirect:") != std::string::npos)
 			{
 				std::vector<std::string>	tmpStrVec;
-
 				tmpStr = conf[i].substr(9);
 				tmpStr = ft_strtrim(tmpStr, " \t");
 				tmpStrVec = ft_split(tmpStr, " ");
@@ -129,6 +127,7 @@ size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 
 int	Server::getSockFd() { return _sockFd; }
 
+Client&	Server::getClientRef(const int &itC) { return _clients[itC]; }
 
 unsigned int	Server::getClientsCount() { return _clients.size(); }
 
@@ -140,7 +139,7 @@ void	Server::acceptNewClient()
 
 	int clientFd = accept(_sockFd, (sockaddr*)&newClient.getAddrRef(), &newClient.getAddrLenRef());
 	if (clientFd == -1)
-		throw std::string("accept err");
+		throw std::string("accept new client error");
 	fcntl(clientFd, F_SETFL, O_NONBLOCK);
 	newClient.setSockFd(clientFd);
 	newClient.setStatus(NEW_CLIENT);
@@ -169,7 +168,7 @@ bool	Server::_isEndOfChunke(Client &client)
 	return false;
 }
 
-ssize_t	Server::_readChunke(Client &client)
+void	Server::_readChunke(Client &client)
 {
 	int				clientFd = client.getSockFd();
 	int				bytesRead;
@@ -183,23 +182,23 @@ ssize_t	Server::_readChunke(Client &client)
 			buff[bytesRead] = 0;
 			client.addChunkePart(buff);
 			if (_isEndOfChunke(client) == true)
-				return bytesRead;
+				return ;
 			else
 			{
 				std::string content = client.getChunke();
 				if ((content.find("\r\n")) != std::string::npos)
 				{
 					if (content[0] == '0')
-						return bytesRead;
+						return ;
 					client.setChunkeSize(std::strtol(content.c_str(), NULL, 16));
 					client.clearChunke();
 				}
 			}
 		}
 		else if (bytesRead == 0)
-			return bytesRead;
+			client.setStatus(CLOSE_CONECTION);
 		else if (bytesRead == -1 )
-			throw std::string("recv err");
+			throw std::string("recv chunke size error");
 	}
 	else
 	{
@@ -217,7 +216,7 @@ ssize_t	Server::_readChunke(Client &client)
 			{
 				client.clearChunke();
 				client.clearChunkeSize();
-				return bytesRead;
+				return ;
 			}
 			client.addChunkePart(buff);
 			if (client.getChunke().size() == client.getChunkeSize())
@@ -231,21 +230,20 @@ ssize_t	Server::_readChunke(Client &client)
 			}
 		}
 		else if (bytesRead == 0)
-			return bytesRead;
+			client.setStatus(CLOSE_CONECTION);
 		else if (bytesRead == -1 )
-			throw std::string("recv err");
+			throw std::string("recv chunke error");
 	}
-	return bytesRead;
 }
 
-ssize_t	Server::readRequest(Client &client)
+void	Server::readRequest(Client &client)
 {
 	size_t	buffer_size = 2;
 	char	buff[buffer_size];
 	int		bytesRead;
 
 	if (client.getStatus() == CHUNKED)
-		return _readChunke(client);
+		_readChunke(client);
 	// else if (client.getStatus() == PARTIAL_CONTENT)
 	// {
 	// 	int	allReadedBytesCount = 0;
@@ -274,7 +272,9 @@ ssize_t	Server::readRequest(Client &client)
 			client.setRequest(buff);
 		}
 		else if (bytesRead == 0)
-			return CLOSE_CONECTION;
+			client.setStatus(CLOSE_CONECTION);
+		else if (bytesRead == -1)
+			throw std::string("recv request header error");
 		std::string requestHeader = client.getRequest().getRequest();
 		if (requestHeader.find("\r\n\r\n") != std::string::npos)
 		{
@@ -284,13 +284,9 @@ ssize_t	Server::readRequest(Client &client)
 			else if (client.getHeaderInfo("Transfer-Encoding").compare(0, 7, "chunked") == 0)
 				client.setStatus(CHUNKED);
 			else
-			{
 				makeClientResponse(client);
-				client.setStatus(WAITING_FOR_RESPONSE);
-			}
 		}
 	}
-	return bytesRead;
 }
 
 void	Server::makeClientResponse(Client &client)
@@ -302,6 +298,7 @@ void	Server::makeClientResponse(Client &client)
 		_methodPost(client);
 	else
 		client.setResponseStatus("405 Method Not Allowed");
+	client.setStatus(WAITING_FOR_RESPONSE);
 }
 
 void	Server::_createListingStart(std::string &content)
@@ -344,7 +341,7 @@ std::string	Server::_createListing(std::string serverRoot, std::string &path)
 		if (errno == ENOENT)		//	Directory not found
 			return "";				//	!!!!!!!!!!!!!!!
 		else
-			throw std::string ("opendir err");
+			throw std::string (path + " [opendir error]");
 	}
 	if (path.back() != '/')
 		path.append("/");
@@ -359,7 +356,7 @@ std::string	Server::_createListing(std::string serverRoot, std::string &path)
 		_addRefToListing(content, tmp, ent->d_name);
 	}
 	if (closedir(dir) == -1)
-		throw std::string ("closedir err");
+		throw std::string (path + " [closedir error]");
 	_createListingEnd(content);
 	return content;
 }
@@ -416,7 +413,7 @@ bool	Server::_findFile(std::string &path, std::string &fileName)
 		if (errno == ENOENT)		//	Directory not found
 			return false;				//	!!!!!!!!!!!!!!!
 		else
-			throw std::string ("opendir err");
+			throw std::string (path + " [opendir error]");
 	}
 	while (dirp)
 	{
@@ -613,7 +610,7 @@ void		Server::_methodGet(Client &client)
 	{
 		in.open(path);
 		if (!in.is_open())
-			throw std::string("open err");
+			throw std::string(path + " [open error]");
 		ssbuff << in.rdbuf();
 		in.close();
 		content = ssbuff.str();
@@ -630,7 +627,7 @@ void		Server::sendResponse(Client &client)
 	if (bytesSend > 0)
 		client.addAllBytesSend(bytesSend);
 	else if (bytesSend == -1)
-		throw std::string("send err");
+		throw std::string("send response error");
 	if (client.getAllBytesSend() == client.getResponse().size())
 	{
 		client.clearRequest();
@@ -650,6 +647,8 @@ Server&	Server::operator = (const Server &other)
 		this->_addr = other._addr;
 		this->_addrLen = other._addrLen;
 		this->_root = other._root;
+		this->_index = other._index;
+		this->_autoIndex = other._autoIndex;
 		this->_errors = other._errors;
 		this->_locations = other._locations;
 		this->_clients = other._clients;
@@ -662,22 +661,22 @@ void	Server::_makeCgiEnv(Client &client)
 	Request request = client.getRequest();
 
 	request = client.getRequest();
-	size_t sizeEnv = 14;
-	_char_env = (char**)calloc(sizeEnv, sizeof(char*));
-	_char_env[0] = ft_strdup("AUTH_TYPE=basic");
-	_char_env[1] = ft_strjoin("CONTENT_LENGTH=", std::to_string(request.getBody().size()).c_str());
-	_char_env[2] = ft_strjoin("CONTENT_TYPE=", (request.getHeaderByKey("Content-Type").c_str()));
-	_char_env[3] = ft_strdup("GATEWAY_INTERFACE=CGI/1.1");
-	_char_env[4] = ft_strjoin("PATH_INFO=", request.getUrl().c_str());
-	_char_env[5] = ft_strjoin("PATH_TRANSLATED=", "/Users/mismene/ft_webserver/cgi/cgi_tester");
-	_char_env[6] = ft_strdup("REMOTE_ADDR=");
-	_char_env[7] = ft_strdup("REMOTE_IDENT=");
-	_char_env[8] = ft_strdup("REMOTE_USER=");
-	_char_env[9] = ft_strjoin("REQUEST_METHOD=", request.getMethod().c_str());
-	_char_env[10] = ft_strjoin("REQUEST_URI=http://", (client.getClientInfo() + request.getUrl()).c_str());
-	_char_env[11] = ft_strjoin("SERVER_PROTOCOL=", request.getProtocolV().c_str());
-	_char_env[12] = ft_strdup("HTTP_X_SECRET_HEADER_FOR_TEST=1");
-	_char_env[13] = nullptr;
+	_envCount = 14;
+	_env = (char**)calloc(_envCount, sizeof(char*));
+	_env[0] = ft_strdup("AUTH_TYPE=basic");
+	_env[1] = ft_strjoin("CONTENT_LENGTH=", std::to_string(request.getBody().size()).c_str());
+	_env[2] = ft_strjoin("CONTENT_TYPE=", (request.getHeaderByKey("Content-Type").c_str()));
+	_env[3] = ft_strdup("GATEWAY_INTERFACE=CGI/1.1");
+	_env[4] = ft_strjoin("PATH_INFO=", request.getUrl().c_str());
+	_env[5] = ft_strjoin("PATH_TRANSLATED=", "/Users/mismene/ft_webserver/cgi/cgi_tester");
+	_env[6] = ft_strdup("REMOTE_ADDR=");
+	_env[7] = ft_strdup("REMOTE_IDENT=");
+	_env[8] = ft_strdup("REMOTE_USER=");
+	_env[9] = ft_strjoin("REQUEST_METHOD=", request.getMethod().c_str());
+	_env[10] = ft_strjoin("REQUEST_URI=http://", (client.getClientInfo() + request.getUrl()).c_str());
+	_env[11] = ft_strjoin("SERVER_PROTOCOL=", request.getProtocolV().c_str());
+	_env[12] = ft_strdup("HTTP_X_SECRET_HEADER_FOR_TEST=1");
+	_env[13] = nullptr;
 }
 
 void	Server::_CGI(Client &client)
@@ -686,17 +685,20 @@ void	Server::_CGI(Client &client)
 	pid_t		pid;
 	ssize_t 	bytesRead;
 	ssize_t 	bytesSend;
-	char	buff[BUFSIZ];
+	char		buff[BUFSIZ];
 	std::string	result_buf = "";
-	int		status = 0;
-	char** _argv = new char*[2];
+	int			status = 0;
+	char**		_argv = new char*[2];
 	_argv[0] = ft_strdup("./cgi/cgi_tester");
 	_argv[1] = 0;
 
 
 	if (pipe(pipeFd) != 0)
-		throw std::string("CGI pipe err");
-	int	file_fd = open("file", O_CREAT | O_RDWR | O_TRUNC, 0677);
+	{
+		client.setResponseStatus("500 Internal Server Error");
+		throw std::string("CGI pipe error");
+	}
+	int	file_fd = open("CGI_file", O_CREAT | O_RDWR | O_TRUNC, 0677);
 	if ((pid = fork()) == 0)
 	{
 		dup2(pipeFd[0], 0);
@@ -704,7 +706,7 @@ void	Server::_CGI(Client &client)
 		dup2(file_fd, 1);
 		close(file_fd);
 		_makeCgiEnv(client);
-		exit(execve(_argv[0], _argv, _char_env));
+		exit(execve(_argv[0], _argv, _env));
 	}
 	else if (pid == -1)
 		client.setResponseStatus("500 Internal Server Error");
@@ -713,8 +715,8 @@ void	Server::_CGI(Client &client)
 		bytesSend = write(pipeFd[1], client.getRequest().getBody().c_str(), client.getRequest().getBody().size());
 		if (bytesSend == -1)
 		{
-			std::cerr << strerror(errno) << std::endl;
-			throw std::string("CGI send err");
+			client.setResponseStatus("500 Internal Server Error");
+			throw std::string("CGI write error");
 		}
 		close(pipeFd[1]);
 		close(pipeFd[0]);
@@ -726,6 +728,11 @@ void	Server::_CGI(Client &client)
 			{
 				buff[bytesRead] = '\0';
 				result_buf += std::string(buff);
+			}
+			if (bytesRead == -1)
+			{
+				client.setResponseStatus("500 Internal Server Error");
+				throw std::string("CGI read error");
 			}
 			close(file_fd);
 			client.setResponseStatus("200 OK");

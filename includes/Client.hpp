@@ -64,11 +64,7 @@ class Client
 		void			setChunkeSize(const size_t &size) { _chunkeSize = size; }
 		void			addChunkePart(const std::string &chunke) { _chunke += chunke; }
 		std::string		getChunke() { return _chunke; }
-		void			clearChunke()
-		{
-			_chunke.clear();
-			// _chunkeSize = 0;
-		}
+		void			clearChunke() { _chunke.clear(); }
 
 		std::string		getClientInfo();
 		std::string		getResponseHeader();

@@ -1,5 +1,5 @@
 
-VPATH	=	srcs srcs/utils includes
+VPATH	=	srcs includes
 
 SRCS	=	main.cpp \
 			WebServ.cpp \
@@ -7,11 +7,7 @@ SRCS	=	main.cpp \
 			Client.cpp \
 			Request.cpp \
 			Response.cpp \
-			ft_strtrim.cpp \
-			ft_split.cpp \
-			mapToCharArray.cpp \
-			ft_strdup.cpp \
-			ft_strjoin.cpp
+			utils.cpp
 
 HEADERS	=	WebServ.hpp \
 			Server.hpp \

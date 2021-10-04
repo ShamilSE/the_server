@@ -39,7 +39,6 @@ class WebServ
 
 		void		_setFds();
 		void		_select();
-		// void		_acceptNewClient(Server &);
 
 	public:
 		WebServ(const std::string &);

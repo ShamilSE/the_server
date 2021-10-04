@@ -1,15 +1,17 @@
 #pragma once
 
 #include "WebServ.hpp"
-// #include "Client.hpp"
 class Client;
 
 struct location;
 
 class Server
 {
+	public:
+		std::vector<Client>			_clients;
+
 	private:
-		int							_sockFd;	/*	слушающий сокет	*/
+		int							_sockFd;
 		struct sockaddr_in			_addr;
 		socklen_t					_addrLen;
 		std::string					_root;
@@ -17,13 +19,11 @@ class Server
 		bool		 				_autoIndex;
 		std::map<int, std::string>	_errors;
 		std::vector<location>		_locations;
-		std::vector<Client>			_clients;
-		std::map<std::string, std::string>		_env;
-		char**									_char_env;
+		char**						_char_env;
 
 		size_t		_parseLocation(const std::vector<std::string> &, size_t);
-		void		_methodGet(const int &);
-		void		_methodPost(const int &);	//	!!!
+		void		_methodGet(Client &);
+		void		_methodPost(Client &);
 		std::string	_createListing(std::string, std::string &);
 		void		_createListingStart(std::string &);
 		void		_addRefToListing(std::string &, std::string &, std::string);
@@ -31,20 +31,12 @@ class Server
 		std::string	_makeDefaultPage();
 		std::string	_checkType(const std::string &);
 		bool		_findFile(std::string &, std::string &);
-		ssize_t		_readChunke(const int &);
-		void		_checkChunke(const int &);
-		bool		_isEndOfChunke(const int &);
+		ssize_t		_readChunke(Client &);
+		bool		_isEndOfChunke(Client &);
 		bool		_isMethodAllow(const location &, const std::string &);
-		void		_initEnv(int itC);
-		void		_setEnv(std::string, std::string);
-		void 		_freeCharEnv();
-		void		_executeCGI(int itC);
 
-		void		_CGI(const int &);
-
-		void		_makeCgiEnv(const int &itC);
-		void 		execCGI(const int &itC,  const std::string &path);
-
+		void		_makeCgiEnv(Client &);
+		void		_CGI(Client &);
 
 	public:
 		Server(const std::vector<std::string> &);
@@ -52,27 +44,21 @@ class Server
 
 		~Server();
 
-		void					setClient(Client&);
+		void					acceptNewClient();
+		ssize_t					readRequest(Client &);
+		void					sendResponse(Client &);
 
 		int						getSockFd();
-		unsigned short 			getPort();
 		unsigned int			getClientsCount();
-		int						getClientSockFd(const int &);
-		int						getClientStatus(const int &);
-		Client					getClient(const int &);
+		int						getClientSockFd(const int &);	//	!!!
 		std::string				getErrorByKey(int);
+
 		void					setError(int, std::string);
 
-
-		void					acceptNewClient();
-		ssize_t					readRequest(const int &itC);
-		void					sendResponse(const int &);
-
-		 bool					isClientRequest(const int &);
 		 bool					isClientResponse(const int &);
-		 void					makeClientResponse(const int &);
+		 void					makeClientResponse(Client &);
 		 void					eraseClient(const int &);
+		std::vector<Client>::iterator	disconectUser(const int &itC);
 
 		Server&					operator = (const Server&);
-		void					disconectUser(const int &itC);
 };

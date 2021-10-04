@@ -43,7 +43,6 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 			std::cout << "default error page will be used" << std::endl;
 			it->setError(404, "./Servers/404.html");
 		}
-		std::cout << "server" << std::endl;
 	}
 }
 
@@ -74,7 +73,7 @@ void	WebServ::_setFds()
 			int clientFd = itS->getClientSockFd(itC);
 
 			FD_SET(clientFd, &_rFds);
-			// if (itS->getClient(itC).getStatus() == WAITING_FOR_RESPONSE)
+			if (itS->isClientResponse(itC))
 				FD_SET(clientFd, &_wFds);
 			if (clientFd > _maxFd)
 				_maxFd = clientFd;
@@ -102,21 +101,41 @@ void	WebServ::mainCycly()
 		_setFds();
 		_select();
 		std::vector<Server>::iterator itS = _servers.begin();
-		if (FD_ISSET(itS->getSockFd(), &_rFds))
-			itS->acceptNewClient();
-		for (size_t itC = 0; itC < itS->getClientsCount(); ++itC)
+		for ( ; itS != _servers.end(); ++itS)
 		{
-			clientFd = itS->getClientSockFd(itC);
-			if (FD_ISSET(clientFd, &_rFds))
+			if (FD_ISSET(itS->getSockFd(), &_rFds))
+				itS->acceptNewClient();
+			// for (size_t itC = 0; itC < itS->getClientsCount(); ++itC)
+			// {
+			// 	clientFd = itS->getClientSockFd(itC);
+			// 	if (FD_ISSET(clientFd, &_rFds))
+			// 	{
+			// 		if (itS->readRequest(itC) == 0)
+			// 		{
+			// 			itS->disconectUser(itC);
+			// 			break;
+			// 		}
+			// 	}
+			// 	if (itS->isClientResponse(itC) && FD_ISSET(clientFd, &_wFds))
+			// 		itS->sendResponse(itC);
+			// }
+			std::vector<Client>::iterator	itC = itS->_clients.begin();
+			for ( ; itC != itS->_clients.end(); ++itC)
 			{
-				if (itS->readRequest(itC) == 0)
+				clientFd = itC->getSockFd();
+				if (FD_ISSET(clientFd, &_rFds))
 				{
-					itS->disconectUser(itC);
-					break;
+					if (itS->readRequest(*itC) == CLOSE_CONECTION)
+					{
+						itC = itS->disconectUser(itC - itS->_clients.begin());
+						if (itC == itS->_clients.end())
+							break ;
+						clientFd = itC->getSockFd();
+					}
 				}
+				if (FD_ISSET(clientFd, &_wFds))
+					itS->sendResponse(*itC);
 			}
-			if (itS->isClientResponse(itC) && FD_ISSET(clientFd, &_wFds))
-				itS->sendResponse(itC);
 		}
 	}
 }

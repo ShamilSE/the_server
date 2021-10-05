@@ -252,33 +252,38 @@ ssize_t	Server::_readChunke(const int &itC)
 
 ssize_t	Server::readRequest(const int &itC)
 {
-	size_t	buffer_size = 2;
+	ssize_t	buffer_size = 0;
 	Client	&client = _clients[itC];
-	char	buff[buffer_size];
-	int		bytesRead;
+	int		bytesRead = 0;
 
 	if (client.getStatus() == CHUNKED)
 		return _readChunke(itC);
-	// else if (client.getStatus() == PARTIAL_CONTENT)
-	// {
-	// 	size_t	allReadedBytesCount = 0;
+	else if (client.getStatus() == PARTIAL_CONTENT)
+	{
+		buffer_size = 500;
+		char	buff[buffer_size];
+		int	allReadedBytesCount = 0;
 
-	// 	while (allReadedBytesCount < std::stoi(client.getRequest().getHeaderByKey("Content-Length")))
-	// 	{
-	// 		bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
-	// 		if (bytesRead > 0)
-	// 		{
-	// 			buff[bytesRead] = 0;
-	// 			client.setRequestBody(buff);
-	// 		}
-	// 		else if (bytesRead == 0)
-	// 			return allReadedBytesCount;
-	// 	}
-
-	// 	return allReadedBytesCount;
-	// }
+		while (allReadedBytesCount < std::stoi(client.getRequest().getHeaderByKey("Content-Length")))
+		{
+			bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
+			if (bytesRead > 0)
+			{
+				buff[bytesRead] = 0;
+				client.setRequestBody(buff);
+				allReadedBytesCount += bytesRead;
+			}
+			else if (bytesRead == 0)
+				return (ssize_t)allReadedBytesCount;
+		}
+		client.setStatus(WAITING_FOR_RESPONSE);
+		makeClientResponse(itC);
+		return allReadedBytesCount;
+	}
 	else
 	{
+		buffer_size = 2;
+		char	buff[buffer_size];
 		std::string allRequest = "";
 		while (allRequest.find("\r\n\r\n") == std::string::npos)
 		{
@@ -287,11 +292,11 @@ ssize_t	Server::readRequest(const int &itC)
 			{
 				buff[bytesRead] = '\0';
 				allRequest += buff;
-				std::cout << "buff\n" << buff << std::endl;
 			}
 			else if (bytesRead == 0)
 				return bytesRead;
 		}
+		std::cout << "header:\n" << allRequest << std::endl;
 		client.setRequest(allRequest);
 		client.parseRequestHeader();
 		if (client.getRequest().getHeaderByKey("Content-Length") != "")
@@ -533,6 +538,30 @@ void		Server::_executeCGI(int itC) {
 	//_freeCharEnv();
 }
 
+void	Server::_boundaryHandler(const int &itC, std::string &boundary)
+{
+	Client			&client = _clients[itC];
+	boundary = boundary.substr(boundary.find("boundary=") + 9);
+	// boundary = boundary.substr(boundary.find_first_not_of('-'));
+	boundary = ft_strtrim(boundary, "-\r\n");
+
+	std::string body = client.getRequest().getBody();
+	body = ft_strtrim(body, "-\r\n");
+	body = body.substr(body.find_first_not_of(boundary), body.find_last_not_of(boundary) - body.find_first_not_of(boundary));
+	body = ft_strtrim(body, "-\r\n");
+	// std::cout << "file content\n" << body << std::endl;
+	std::vector<std::string>	splitBody = ft_split(body, "\r\n\r\n");
+
+	std::string header = splitBody[0];
+	body = splitBody[1];
+	std::cout << "header\n" << header << std::endl;
+	std::cout << "body\n" << body << std::endl;
+	std::string filename = header.substr(header.find("filename=") + 9);
+	filename = filename.substr(0, filename.find("\r"));
+	filename = ft_strtrim(filename, "\"");
+	std::cout << "filename\n" << filename << std::endl;
+}
+
 void		Server::_methodPost(const int &itC)	//	!!!
 {
 	Client			&client = _clients[itC];
@@ -574,6 +603,14 @@ void		Server::_methodPost(const int &itC)	//	!!!
 			return ;
 		}
 		url.replace(0, location.name.length(), location.root);
+		std::string boundary = client.getHeaderInfo("Content-Type");
+		if (boundary != "")
+		{
+			std::cout << client.getHeaderInfo("Content-Length") << std::endl;
+			std::cout << client.getRequest().getBody().size() << std::endl;
+			_boundaryHandler(itC, boundary);
+			return ;
+		}
 		if (_checkType(client.getRequest().getUrl()) == ".bla")
 		{
 			_CGI(itC);

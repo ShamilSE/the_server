@@ -415,27 +415,15 @@ bool	Server::_findFile(std::string &path, std::string &fileName)
 		else
 			throw std::string (path + " [opendir error]");
 	}
-	while (dirp)
+	while ((dp = readdir(dirp)) != NULL)
 	{
-		errno = 0;
-		if ((dp = readdir(dirp)) != NULL)
-		{
-			if (fileName.compare(dp->d_name) == 0)
-			{	//	FOUND
-				closedir(dirp);
-				return true;
-            }
+        if (fileName.compare(dp->d_name) == 0) // file found
+        {
+            closedir(dirp);
+            return true;
         }
-		else
-		{
-			if (errno == 0)
-			{	// NOT FOUND
-				closedir(dirp);
-				return false;
-			}
-		}
 	}
-	closedir(dirp);	//	READ ERROR
+	closedir(dirp);
 	return false;
 }
 

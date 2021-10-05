@@ -252,7 +252,7 @@ ssize_t	Server::_readChunke(const int &itC)
 
 ssize_t	Server::readRequest(const int &itC)
 {
-	size_t	buffer_size = 500;
+	size_t	buffer_size = 2;
 	Client	&client = _clients[itC];
 	char	buff[buffer_size];
 	int		bytesRead;

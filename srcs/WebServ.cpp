@@ -30,9 +30,9 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 				{
 					_servers.push_back(Server(tmpStrVec));
 				}
-				catch(const std::exception& e)
+				catch (const std::string &error)
 				{
-					std::cerr << e.what() << '\n';
+					std::cerr << error << std::endl;
 				}
 				tmpStrVec.clear();
 			}
@@ -44,12 +44,12 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 	{
 		_servers.push_back(Server(tmpStrVec));
 	}
-	catch(const std::exception& e)
+	catch (const std::string &error)
 	{
-		std::cerr << e.what() << '\n';
-		return ;
+		std::cerr << error << std::endl;
 	}
-	
+	if (_servers.empty())
+		exit(1);
 	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
 	{
 		try

@@ -327,8 +327,9 @@ void	Server::_createListingEnd(std::string &content)
 }
 
 
-std::string	Server::_createListing(std::string serverRoot, std::string &path)
+std::string	Server::_createListing(std::string &path)
 {
+	std::string		serverRoot = _root;
 	DIR				*dir;
 	struct dirent	*ent;
 	std::string		content;
@@ -376,7 +377,7 @@ std::string	Server::_makeDefaultPage()
 	page += "\t\t</style>\n";
 	page += "\t</head>\n";
 	page += "\t<body>\n";
-	page += "\t\t<h1>Welcome to <a href=\"https://profile.intra.42.fr/users/aquinoa\">Aquinoa</a> server!</h1>\n";
+	page += "\t\t<h1>Welcome to <a href=\"https://github.com/aquinoa-nba\">Aquinoa</a> & <a href=\"https://github.com/ShamilSE\">Mismene</a> server!</h1>\n";
 	page += "\t\t<p>If you see this page, the web server is successfully installed and\n";
 	page += "\t\tworking. Further configuration is required.</p>\n";
 	page += "\t\t<p><em>Thank you for using this server.</em></p>\n";
@@ -402,7 +403,7 @@ std::string	Server::_checkType(const std::string &url)
 	return "";
 }
 
-bool	Server::_findFile(std::string &path, std::string &fileName)
+bool	Server::_findFile(const std::string &path, const std::string &fileName)
 {
 	DIR				*dirp;
 	struct dirent	*dp;
@@ -415,16 +416,38 @@ bool	Server::_findFile(std::string &path, std::string &fileName)
 		else
 			throw std::string (path + " [opendir error]");
 	}
-	while ((dp = readdir(dirp)) != NULL)
+	while (dirp)
 	{
-        if (fileName.compare(dp->d_name) == 0) // file found
-        {
-            closedir(dirp);
-            return true;
+		errno = 0;
+		if ((dp = readdir(dirp)) != NULL)
+		{
+			if (fileName.compare(dp->d_name) == 0)
+			{	//	FOUND
+				closedir(dirp);
+				return true;
+            }
         }
+		else
+		{
+			if (errno == 0)
+			{	// NOT FOUND
+				closedir(dirp);
+				return false;
+			}
+		}
 	}
-	closedir(dirp);
+	closedir(dirp);	//	READ ERROR
 	return false;
+	// while ((dp = readdir(dirp)) != NULL)
+	// {
+    //     if (fileName.compare(dp->d_name) == 0) // file found
+    //     {
+    //         closedir(dirp);
+    //         return true;
+    //     }
+	// }
+	// closedir(dirp);
+	// return false;
 }
 
 void		Server::_methodPost(Client &client)
@@ -483,7 +506,6 @@ void		Server::_methodPost(Client &client)
 			}
 		}
 		std::ofstream 	out;
-		// std::cout << "url: " << url << std::endl;
 		out.open(url);
 		if (!out.is_open())
 			throw std::string("open err!!!");
@@ -501,94 +523,151 @@ bool		Server::_isMethodAllow(const location &loc, const std::string &method)
 	return false;
 }
 
-void		Server::_methodGet(Client &client)
+std::string		Server::_makeAutoindex(Client &client)
 {
-	std::string				url = client.getRequest().getUrl();
-	std::string				content("");
-	std::string				path("");
-	std::ostringstream		ssbuff;
-	size_t					pos;
-	std::ifstream 			in;
-	location				location;
+	std::string		url = client.getRequest().getUrl();
+	size_t			maxLocnameLen = 0;
+	std::string		content = "";
+	location		location;
+	size_t			pos;
 
 	if (url != "/" && url.back() == '/')
 		url.pop_back();
 	for (size_t i = 0; i < _locations.size(); ++i)
 	{
 		location = _locations[i];
-
 		if (location.name != "/" && location.name.back() == '/')
 			location.name.pop_back();
 		if (location.root.back() == '/')
 			location.root.pop_back();
 		if ((pos = url.find(location.name)) != std::string::npos)
 		{
-			if (pos != 0)
+			if (pos != 0 || maxLocnameLen > location.name.length())
 				continue ;
+			maxLocnameLen = location.name.length();
 			if (url == location.name)
+				content = _createListing(location.root);
+			else if (location.name != "/")
 			{
-				if (location.autoIndex == true)
-					content = _createListing(_root, location.root);
-				else
-				{
-					path = location.root;
-					if (path.back() != '/')
-						path += "/";
-					path += location.index;
-					if (path.back() == '/')
-						path.pop_back();
-				}
-				break ;
-			}
-			else if (url[location.name.size()] == '/')
-			{
-				url.replace(pos, location.name.length(), location.root);
-				break ;
+				url.replace(0, location.name.length(), location.root);
+				content = _createListing(url);
 			}
 		}
 	}
-	if (_isMethodAllow(location, client.getRequest().getMethod()))
-		client.setResponseStatus("200 OK");
-	else if (url != location.name)
-		client.setResponseStatus("404 Not Found");
+	if (content.empty())
+	{
+		if (url.find(_root) != std::string::npos)
+			content = _createListing(url);
+	}
+	return content;
+}
+
+void		Server::_methodGet(Client &client)
+{
+	std::string				url = client.getRequest().getUrl();
+	size_t					maxLocnameLen = 0;
+	std::string				content("");
+	int						locId = -1;
+	std::string				path("");
+	std::ostringstream		ssbuff;
+	location				loc;
+	size_t					pos;
+	std::ifstream 			in;
+
+	if (_root.empty())
+		content = _makeDefaultPage();
+	else if (_autoIndex == true && _checkType(url) == "")
+	{
+		content = _makeAutoindex(client);
+		if (content.empty())
+			path = _errors[404];
+		else
+			client.setResponseStatus("200 OK");
+	}
 	else
 	{
-		client.setResponseStatus("405 Method Not Allowed");
-		return ;
-	}
-	if (content.empty() && path.empty())
-	{
-		if (url == "/")
-			content = _makeDefaultPage();
-		else
+		if (url != "/" && url.back() == '/')
+			url.pop_back();
+		std::vector<location>::iterator	itLoc = _locations.begin();
+		for ( ; itLoc != _locations.end(); ++itLoc)
 		{
-			std::string type = _checkType(url);
-			if (type.empty())
+			loc = *itLoc;
+			if (loc.name != "/" && loc.name.back() == '/')
+				loc.name.pop_back();
+			if (loc.root.back() == '/')
+				loc.root.pop_back();
+			if ((pos = url.find(loc.name)) != std::string::npos)
 			{
-				if (url.size() < _root.size())
-					path = _errors[404];
+				if (pos != 0)
+					continue ;
+				if (url == loc.name)
+				{
+					path = loc.root;
+					if (path.back() != '/')
+						path += "/";
+					path += loc.index;
+					if (maxLocnameLen < loc.name.length())
+					{
+						maxLocnameLen = loc.name.length();
+						locId = itLoc - _locations.begin();
+					}
+				}
+				else if (url[loc.name.size()] == '/')
+				{
+					url.replace(pos, loc.name.length(), loc.root);
+					if (maxLocnameLen > loc.name.length())
+					{
+						maxLocnameLen = loc.name.length();
+						locId = itLoc - _locations.begin();
+					}
+				}
+			}
+		}
+		if (locId != -1)
+		{
+			loc = _locations[locId];
+			if (_isMethodAllow(loc, client.getRequest().getMethod()))
+				client.setResponseStatus("200 OK");
+			else
+			{
+				client.setResponseStatus("405 Method Not Allowed");
+				return ;
+			}
+		}
+		if (content.empty() && path.empty())
+		{
+			if (url == "/")
+				content = _makeDefaultPage();
+			else
+			{
+				std::string type = _checkType(url);
+				if (type.empty())
+				{
+					if (url.size() < _root.size())
+						path = _errors[404];
+					else
+					{
+						bool res = _findFile(url, loc.index);
+						if (res == true)
+							path = url + "/" + loc.index;
+						else
+							path = _errors[404];
+					}
+				}
 				else
 				{
-					bool res = _findFile(url, location.index);
+					path = url.substr(0, url.find_last_of('/'));
+					std::string file = url.substr(url.find_last_of('/') + 1);
+					if (path.empty())
+						path = _root;
+					if (path.back() != '/')
+						path += "/";
+					bool res = _findFile(path, file);
 					if (res == true)
-						path = url + "/" + location.index;
+						path += file;
 					else
 						path = _errors[404];
 				}
-			}
-			else
-			{
-				path = url.substr(0, url.find_last_of('/'));
-				std::string file = url.substr(url.find_last_of('/') + 1);
-				if (path.empty())
-					path = _root;
-				if (path.back() != '/')
-					path += "/";
-				bool res = _findFile(path, file);
-				if (res == true)
-					path += file;
-				else
-					path = _errors[404];
 			}
 		}
 	}
@@ -603,6 +682,10 @@ void		Server::_methodGet(Client &client)
 		in.close();
 		content = ssbuff.str();
 	}
+	// std::cout << "url: " << url << std::endl;
+	// std::cout << "path: " << path << std::endl;
+	// std::cout << "content is empty ?" << content.empty() << std::endl;
+	// std::cout << "content\n" << content << std::endl;
 	client.setResponseContent(content);
 }
 

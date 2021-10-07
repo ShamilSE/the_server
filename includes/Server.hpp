@@ -20,16 +20,18 @@ class Server
 		size_t 						_envCount;
 		char**						_env;
 
+		std::string	_makeAutoindex(Client &);
+
 		size_t		_parseLocation(const std::vector<std::string> &, size_t);
 		void		_methodGet(Client &);
 		void		_methodPost(Client &);
-		std::string	_createListing(std::string, std::string &);
+		std::string	_createListing(std::string &);
 		void		_createListingStart(std::string &);
 		void		_addRefToListing(std::string &, std::string &, std::string);
 		void		_createListingEnd(std::string &);
 		std::string	_makeDefaultPage();
 		std::string	_checkType(const std::string &);
-		bool		_findFile(std::string &, std::string &);
+		bool		_findFile(const std::string &, const std::string &);
 		void		_readChunke(Client &);
 		bool		_isEndOfChunke(Client &);
 		bool		_isMethodAllow(const location &, const std::string &);

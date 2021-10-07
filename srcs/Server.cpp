@@ -6,7 +6,6 @@ Server::Server(const std::vector<std::string> &conf)
 {
 	int reuseOpt = 1;
 
-	bzero(&_addr, _addrLen);
 	for (size_t i = 0; i < conf.size(); i++)
 	{
 		if (conf[i].find("host:") != std::string::npos)
@@ -46,6 +45,7 @@ Server::Server(const std::vector<std::string> &conf)
 		if (conf[i].find("location:") != std::string::npos)
 			i = _parseLocation(conf, i);
 	}
+	bzero(&_addr, _addrLen);
 	_addr.sin_family = AF_INET;
 	_addrLen = sizeof(_addr);
 	_sockFd = socket(AF_INET, SOCK_STREAM, 0);	/*	создание сокета	*/
@@ -73,7 +73,9 @@ size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 		location	loc;
 		loc.root = _root;
 		loc.index = _index;
-		loc.autoIndex = _autoIndex;
+		// loc.autoIndex = _autoIndex;
+		loc.cgi.first = "";
+		loc.cgi.second = "";
 		tmpStr = conf[i].substr(9);
 		loc.name = ft_strtrim(tmpStr, " \t");
 		i++;
@@ -87,17 +89,17 @@ size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 			}
 			if (conf[i].find("index:") != std::string::npos)
 			{
-				if (conf[i].find("auto_index:") != std::string::npos)
-				{
-					tmpStr = conf[i].substr(11);
-					tmpStr = ft_strtrim(tmpStr, " \t");
-					loc.autoIndex = (tmpStr == "on" ? true : false);
-				}
-				else
-				{
+				// if (conf[i].find("auto_index:") != std::string::npos)
+				// {
+				// 	tmpStr = conf[i].substr(11);
+				// 	tmpStr = ft_strtrim(tmpStr, " \t");
+				// 	loc.autoIndex = (tmpStr == "on" ? true : false);
+				// }
+				// else
+				// {
 					tmpStr = conf[i].substr(6);
 					loc.index = ft_strtrim(tmpStr, " \t");
-				}
+				// }
 			}
 			if (conf[i].find("root:") != std::string::npos)
 			{
@@ -110,13 +112,25 @@ size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 				tmpStr = ft_strtrim(tmpStr, " \t");
 				loc.maxBodySize = atoi(tmpStr.c_str());
 			}
-			if (conf[i].find("redirect:") != std::string::npos)
+			if (conf[i].find("redir:") != std::string::npos)
 			{
+				loc.root = "";
+				loc.index = "";
+				// loc.autoIndex = false;
+				std::vector<std::string>	tmpStrVec;
+				tmpStr = conf[i].substr(6);
+				tmpStr = ft_strtrim(tmpStr, " \t");
+				tmpStrVec = ft_split(tmpStr, " ");
+				loc.redir = std::make_pair(std::atoi(tmpStrVec[0].c_str()), tmpStrVec[1]);
+			}
+			if (conf[i].find("cgi_path:") != std::string::npos)
+			{
+				// loc.autoIndex = false;
 				std::vector<std::string>	tmpStrVec;
 				tmpStr = conf[i].substr(9);
 				tmpStr = ft_strtrim(tmpStr, " \t");
 				tmpStrVec = ft_split(tmpStr, " ");
-				loc.redir[std::atoi(tmpStrVec[0].c_str())] = tmpStrVec[1];
+				loc.cgi = std::make_pair(tmpStrVec[0], tmpStrVec[1]);
 			}
 		}
 		_locations.push_back(loc);
@@ -224,9 +238,6 @@ void	Server::_readChunke(Client &client)
 				client.addAllChunke(client.getChunke());
 				client.clearChunke();
 				client.clearChunkeSize();
-				// std::cout << "\033[1;35m\t\tchunked request from client (";
-				// std::cout << client;
-				// std::cout << ")\033[0m" << std::endl;
 			}
 		}
 		else if (bytesRead == 0)
@@ -330,17 +341,16 @@ void	Server::_createListingEnd(std::string &content)
 std::string	Server::_createListing(std::string &path)
 {
 	std::string		serverRoot = _root;
-	DIR				*dir;
-	struct dirent	*ent;
+	DIR				*dirPtr;
+	struct dirent	*s_dirent;
 	std::string		content;
 	std::string		tmp;
 
-	// std::cout << "opendir:\t" << path << std::endl;
-    dir = opendir(path.c_str());
-	if (dir == NULL)
+    dirPtr = opendir(path.c_str());
+	if (dirPtr == NULL)
 	{
 		if (errno == ENOENT)		//	Directory not found
-			return "";				//	!!!!!!!!!!!!!!!
+			return "";
 		else
 			throw std::string (path + " [opendir error]");
 	}
@@ -349,14 +359,16 @@ std::string	Server::_createListing(std::string &path)
 	if (serverRoot.back() != '/')
 		serverRoot.append("/");
 	_createListingStart(content);
-	while ((ent = readdir(dir)) != false)
+	while ((s_dirent = readdir(dirPtr)) != NULL)
 	{
-		tmp = path + ent->d_name;
-		if (path == serverRoot && ( !strcmp(ent->d_name, ".") || !strcmp(ent->d_name, "..")))
+		tmp = path + s_dirent->d_name;
+		if (path == serverRoot && ( !strcmp(s_dirent->d_name, ".") || !strcmp(s_dirent->d_name, "..")))
 			continue ;
-		_addRefToListing(content, tmp, ent->d_name);
+		_addRefToListing(content, tmp, s_dirent->d_name);
 	}
-	if (closedir(dir) == -1)
+	if (errno == EBADF)
+		throw std::string (path + " [readdir error]");
+	if (closedir(dirPtr) == -1)
 		throw std::string (path + " [closedir error]");
 	_createListingEnd(content);
 	return content;
@@ -403,51 +415,32 @@ std::string	Server::_checkType(const std::string &url)
 	return "";
 }
 
-bool	Server::_findFile(const std::string &path, const std::string &fileName)
+bool	Server::_findFile(const std::string &path, const std::string &filename)
 {
-	DIR				*dirp;
-	struct dirent	*dp;
+	DIR				*dirPtr;
+	struct dirent	*s_dirent;
 
-	dirp = opendir(path.c_str());
-	if (dirp == NULL)
+	dirPtr = opendir(path.c_str());
+	if (dirPtr == NULL)
 	{
 		if (errno == ENOENT)		//	Directory not found
-			return false;				//	!!!!!!!!!!!!!!!
+			return false;
 		else
 			throw std::string (path + " [opendir error]");
 	}
-	while (dirp)
+	while ((s_dirent = readdir(dirPtr)) != NULL)
 	{
-		errno = 0;
-		if ((dp = readdir(dirp)) != NULL)
-		{
-			if (fileName.compare(dp->d_name) == 0)
-			{	//	FOUND
-				closedir(dirp);
-				return true;
-            }
+        if (filename.compare(s_dirent->d_name) == 0)	//	file found
+        {
+            closedir(dirPtr);
+            return true;
         }
-		else
-		{
-			if (errno == 0)
-			{	// NOT FOUND
-				closedir(dirp);
-				return false;
-			}
-		}
 	}
-	closedir(dirp);	//	READ ERROR
-	return false;
-	// while ((dp = readdir(dirp)) != NULL)
-	// {
-    //     if (fileName.compare(dp->d_name) == 0) // file found
-    //     {
-    //         closedir(dirp);
-    //         return true;
-    //     }
-	// }
-	// closedir(dirp);
-	// return false;
+	if (errno == EBADF)
+		throw std::string (path + "/" + filename + " [readdir error]");
+	if (closedir(dirPtr) == -1)
+		throw std::string (path + " [closedir error]");
+	return false;		//	file not found
 }
 
 void		Server::_methodPost(Client &client)
@@ -490,9 +483,9 @@ void		Server::_methodPost(Client &client)
 			return ;
 		}
 		url.replace(0, location.name.length(), location.root);
-		if (_checkType(client.getRequest().getUrl()) == ".bla")
+		if (!location.cgi.first.empty() && _checkType(client.getRequest().getUrl()) == location.cgi.first)
 		{
-			_CGI(client);
+			_CGI(client, location.cgi.second);
 			return ;
 		}
 		if (url == location.root)
@@ -615,7 +608,7 @@ void		Server::_methodGet(Client &client)
 				else if (url[loc.name.size()] == '/')
 				{
 					url.replace(pos, loc.name.length(), loc.root);
-					if (maxLocnameLen > loc.name.length())
+					if (maxLocnameLen < loc.name.length())
 					{
 						maxLocnameLen = loc.name.length();
 						locId = itLoc - _locations.begin();
@@ -626,6 +619,12 @@ void		Server::_methodGet(Client &client)
 		if (locId != -1)
 		{
 			loc = _locations[locId];
+			if (!loc.redir.second.empty())
+			{
+				client.setResponseStatus("302 Found");
+				client.setResponseLocation(loc.redir.second);
+				return ;
+			}
 			if (_isMethodAllow(loc, client.getRequest().getMethod()))
 				client.setResponseStatus("200 OK");
 			else
@@ -682,10 +681,6 @@ void		Server::_methodGet(Client &client)
 		in.close();
 		content = ssbuff.str();
 	}
-	// std::cout << "url: " << url << std::endl;
-	// std::cout << "path: " << path << std::endl;
-	// std::cout << "content is empty ?" << content.empty() << std::endl;
-	// std::cout << "content\n" << content << std::endl;
 	client.setResponseContent(content);
 }
 
@@ -750,7 +745,7 @@ void	Server::_makeCgiEnv(Client &client)
 	_env[13] = nullptr;
 }
 
-void	Server::_CGI(Client &client)
+void	Server::_CGI(Client &client, const std::string &path)
 {
 	int			pipeFd[2];
 	pid_t		pid;
@@ -760,9 +755,8 @@ void	Server::_CGI(Client &client)
 	std::string	result_buf = "";
 	int			status = 0;
 	char**		_argv = new char*[2];
-	_argv[0] = ft_strdup("./cgi/cgi_tester");
+	_argv[0] = ft_strdup(path.c_str());
 	_argv[1] = 0;
-
 
 	if (pipe(pipeFd) != 0)
 	{

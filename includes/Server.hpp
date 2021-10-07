@@ -37,7 +37,7 @@ class Server
 		bool		_isMethodAllow(const location &, const std::string &);
 
 		void		_makeCgiEnv(Client &);
-		void		_CGI(Client &);
+		void		_CGI(Client &, const std::string &);
 
 	public:
 		Server(const std::vector<std::string> &);

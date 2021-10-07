@@ -45,6 +45,7 @@ class Client
 		void			setResponseStatus(const std::string &);
 		void			setResponseUrl(const std::string &);
 		void			setResponseContent(const std::string &);
+		void			setResponseLocation(const std::string &);
 		void			setSockFd(const int &);
 		void			setRequest(const std::string &);
 		void			setRequestBody(const std::string &);

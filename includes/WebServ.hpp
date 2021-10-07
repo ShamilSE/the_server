@@ -21,13 +21,14 @@ class Server;
 
 struct location
 {
-	std::string 				name;
-	std::vector<std::string>	methods;
-	std::string 				index;
-	std::string					root;
-	bool		 				autoIndex;
-	size_t						maxBodySize;
-	std::map<int, std::string>	redir;			//	why map ?!
+	std::string 						name;
+	std::vector<std::string>			methods;
+	std::string 						index;
+	std::string							root;
+	// bool		 						autoIndex;
+	size_t								maxBodySize;
+	std::pair<int, std::string>			redir;
+	std::pair<std::string, std::string>	cgi;
 };
 
 class WebServ

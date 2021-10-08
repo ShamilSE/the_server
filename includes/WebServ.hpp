@@ -40,6 +40,7 @@ class WebServ
 
 		void		_setFds();
 		void		_select();
+		void		_addServer(const Server &);
 
 	public:
 		WebServ(const std::string &);

@@ -8,9 +8,11 @@ struct location;
 class Server
 {
 	private:
+		std::pair<std::string, std::string>	_host_port;
 		int							_sockFd;
 		struct sockaddr_in			_addr;
 		socklen_t					_addrLen;
+		std::string					_servername;
 		std::string					_root;
 		std::string					_index;
 		bool		 				_autoIndex;
@@ -45,6 +47,7 @@ class Server
 
 		~Server();
 
+		void					run();
 		void					acceptNewClient();
 		void					readRequest(Client &);
 		void					sendResponse(Client &);
@@ -54,6 +57,7 @@ class Server
 		Client&					getClientRef(const int &);
 		int						getClientSockFd(const int &);	//	!!!
 		std::string				getErrorByKey(int);
+		std::pair<std::string, std::string>	getHostPort() const { return this->_host_port; }
 
 		void					setError(int, std::string);
 

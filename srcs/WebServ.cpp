@@ -28,7 +28,8 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 			{
 				try
 				{
-					_servers.push_back(Server(tmpStrVec));
+					// _servers.push_back(Server(tmpStrVec));
+					_addServer(Server(tmpStrVec));
 				}
 				catch (const std::string &error)
 				{
@@ -42,7 +43,8 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 	}
 	try
 	{
-		_servers.push_back(Server(tmpStrVec));
+		// _servers.push_back(Server(tmpStrVec));
+		_addServer(Server(tmpStrVec));
 	}
 	catch (const std::string &error)
 	{
@@ -52,6 +54,16 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 		exit(1);
 	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
 	{
+		try
+		{
+			it->run();
+		}
+		catch (const std::string &error)
+		{
+			std::cerr << error << std::endl;
+			continue ;
+		}
+		
 		try
 		{
 			it->getErrorByKey(404);
@@ -76,6 +88,19 @@ WebServ::~WebServ()
 			close(itS->getClientSockFd(itC));
 		close(itS->getSockFd());
 	}
+}
+
+void	WebServ::_addServer(const Server &serv)
+{
+	std::string port = serv.getHostPort().second;
+
+	std::vector<Server>::iterator	itS = _servers.begin();
+	for ( ; itS != _servers.end(); ++itS)
+	{
+		if (itS->getHostPort().second == port)
+			return ;
+	}
+	_servers.push_back(serv);
 }
 
 void	WebServ::_setFds()

@@ -4,21 +4,21 @@
 Server::Server(const std::vector<std::string> &conf)
 	: _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr)
 {
-	int reuseOpt = 1;
+	// int reuseOpt = 1;
 
 	for (size_t i = 0; i < conf.size(); i++)
 	{
 		if (conf[i].find("host:") != std::string::npos)
 		{
-			std::string host = ft_strtrim(conf[i].substr(5), " \t");
-			inet_aton(host.c_str(), &_addr.sin_addr);
+			_host_port.first = ft_strtrim(conf[i].substr(5), " \t");
+			// inet_aton(_host_port.first.c_str(), &_addr.sin_addr);
 		}
-		if (conf[i].find("listen:") != std::string::npos)
+		else if (conf[i].find("listen:") != std::string::npos)
 		{
-			std::string	port = ft_strtrim(conf[i].substr(7), " \t");
-			_addr.sin_port = htons(stoi(port));
+			_host_port.second = ft_strtrim(conf[i].substr(7), " \t");
+			// _addr.sin_port = htons(stoi(_host_port.second));
 		}
-		if (conf[i].find("index:") != std::string::npos)
+		else if (conf[i].find("index:") != std::string::npos)
 		{
 			if (conf[i].find("auto_index:") != std::string::npos)
 			{
@@ -31,9 +31,11 @@ Server::Server(const std::vector<std::string> &conf)
 			else
 				_index	= ft_strtrim(conf[i].substr(6), " \t");
 		}
-		if (conf[i].find("root:") != std::string::npos)
+		else if (conf[i].find("root:") != std::string::npos)
 			_root = ft_strtrim(conf[i].substr(5), " \t");
-		if (conf[i].find("error_page:") != std::string::npos)
+		else if (conf[i].find("server_name:") != std::string::npos)
+			_servername = ft_strtrim(conf[i].substr(12), " \t");
+		else if (conf[i].find("error_page:") != std::string::npos)
 		{
 			std::string					tmpStr;
 			std::vector<std::string>	tmpStrVec;
@@ -42,9 +44,35 @@ Server::Server(const std::vector<std::string> &conf)
 			tmpStrVec = ft_split(tmpStr, " ");
 			_errors[std::atoi(tmpStrVec[0].c_str())] = tmpStrVec[1];
 		}
-		if (conf[i].find("location:") != std::string::npos)
+		else if (conf[i].find("location:") != std::string::npos)
 			i = _parseLocation(conf, i);
 	}
+	// bzero(&_addr, _addrLen);
+	// _addr.sin_family = AF_INET;
+	// _addrLen = sizeof(_addr);
+	// _sockFd = socket(AF_INET, SOCK_STREAM, 0);	/*	создание сокета	*/
+	// if (_sockFd == -1)
+	// 	throw std::string("socket error");
+	// fcntl(_sockFd, F_SETFL, O_NONBLOCK);	/*	перевод сокета в неблокирующий режим	*/
+	// if (setsockopt(_sockFd, SOL_SOCKET, SO_REUSEADDR, &reuseOpt, sizeof(reuseOpt)) == -1)	/*	повторное использование порта	*/
+	// 	throw std::string("setsockopt error");
+	// if (bind(_sockFd, (sockaddr*)&_addr, _addrLen) == -1)	/*	привязка сокета к адресу	*/
+	// 	throw std::string("bind error");
+	// if (listen(_sockFd, 128) == -1)	/*	перевод сокета в слушающий режим	*/
+	// 	throw std::string("listen error");
+	// std::cout << "\033[1;35m\t\tserver: " << htons(_addr.sin_port) << " listening\033[0m" << std::endl;
+}
+
+Server::Server(const Server &other) { *this = other; }
+
+Server::~Server() {}
+
+void	Server::run()
+{
+	int reuseOpt = 1;
+
+	inet_aton(_host_port.first.c_str(), &_addr.sin_addr);
+	_addr.sin_port = htons(stoi(_host_port.second));
 	bzero(&_addr, _addrLen);
 	_addr.sin_family = AF_INET;
 	_addrLen = sizeof(_addr);
@@ -59,11 +87,8 @@ Server::Server(const std::vector<std::string> &conf)
 	if (listen(_sockFd, 128) == -1)	/*	перевод сокета в слушающий режим	*/
 		throw std::string("listen error");
 	std::cout << "\033[1;35m\t\tserver: " << htons(_addr.sin_port) << " listening\033[0m" << std::endl;
+
 }
-
-Server::Server(const Server &other) { *this = other; }
-
-Server::~Server() {}
 
 size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 {
@@ -709,6 +734,7 @@ Server&	Server::operator = (const Server &other)
 {
 	if (this != &other)
 	{
+		this->_host_port = other._host_port;
 		this->_sockFd = other._sockFd;
 		this->_addr = other._addr;
 		this->_addrLen = other._addrLen;

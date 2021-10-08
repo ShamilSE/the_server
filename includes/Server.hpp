@@ -32,6 +32,7 @@ class Server
 		void		_addRefToListing(std::string &, std::string &, std::string);
 		void		_createListingEnd(std::string &);
 		std::string	_makeDefaultPage();
+		std::string	_makeDefaultErrorPage(const std::string &);
 		std::string	_checkType(const std::string &);
 		bool		_findFile(const std::string &, const std::string &);
 		void		_readChunke(Client &);

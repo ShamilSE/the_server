@@ -69,13 +69,12 @@ int	main(int ac, char **av)
 		WebServ		WebServ(conf);
 		while (true)
 		{
-			try
-			{
+			try {
 				WebServ.mainCycly();
-			}
-			catch (const std::string &error)
-			{
+			} catch (const std::string &error) {
 				std::cerr << error << std::endl;
+				if (error == "no running server")
+					return 1;
 			}
 		}
 	}

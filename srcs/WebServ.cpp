@@ -26,13 +26,9 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 		{
 			if (!tmpStrVec.empty())
 			{
-				try
-				{
-					// _servers.push_back(Server(tmpStrVec));
+				try {
 					_addServer(Server(tmpStrVec));
-				}
-				catch (const std::string &error)
-				{
+				} catch (const std::string &error) {
 					std::cerr << error << std::endl;
 				}
 				tmpStrVec.clear();
@@ -41,38 +37,23 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 		}
 		tmpStrVec.push_back(tmpStr);
 	}
-	try
-	{
-		// _servers.push_back(Server(tmpStrVec));
+	try {
 		_addServer(Server(tmpStrVec));
-	}
-	catch (const std::string &error)
-	{
+	} catch (const std::string &error) {
 		std::cerr << error << std::endl;
 	}
 	if (_servers.empty())
 		exit(1);
 	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
 	{
-		try
-		{
+		try {
 			it->run();
-		}
-		catch (const std::string &error)
-		{
+		} catch (const std::string &error) {
 			std::cerr << error << std::endl;
+			it = _servers.erase(it);
+			if (it == _servers.end())
+				break ;
 			continue ;
-		}
-		
-		try
-		{
-			it->getErrorByKey(404);
-		}
-		catch (std::out_of_range &error)
-		{
-			std::cout << "no error page provided" << std::endl;
-			std::cout << "default error page will be used" << std::endl;
-			it->setError(404, "./Servers/404.html");
 		}
 	}
 }
@@ -137,6 +118,8 @@ void	WebServ::_select()
 
 void	WebServ::mainCycly()
 {
+	if (_servers.empty())
+		throw std::string("no running server");
 	_setFds();
 	_select();
 	std::vector<Server>::iterator itS = _servers.begin();

@@ -25,7 +25,6 @@ struct location
 	std::vector<std::string>			methods;
 	std::string 						index;
 	std::string							root;
-	// bool		 						autoIndex;
 	size_t								maxBodySize;
 	std::pair<int, std::string>			redir;
 	std::pair<std::string, std::string>	cgi;

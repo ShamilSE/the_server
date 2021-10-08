@@ -4,27 +4,18 @@
 Server::Server(const std::vector<std::string> &conf)
 	: _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr)
 {
-	// int reuseOpt = 1;
-
+	_errors[404] = _errors[502] = "default error";
 	for (size_t i = 0; i < conf.size(); i++)
 	{
 		if (conf[i].find("host:") != std::string::npos)
-		{
 			_host_port.first = ft_strtrim(conf[i].substr(5), " \t");
-			// inet_aton(_host_port.first.c_str(), &_addr.sin_addr);
-		}
 		else if (conf[i].find("listen:") != std::string::npos)
-		{
 			_host_port.second = ft_strtrim(conf[i].substr(7), " \t");
-			// _addr.sin_port = htons(stoi(_host_port.second));
-		}
 		else if (conf[i].find("index:") != std::string::npos)
 		{
 			if (conf[i].find("auto_index:") != std::string::npos)
 			{
-				std::string	tmpStr;
-
-				tmpStr = conf[i].substr(11);
+				std::string	tmpStr = conf[i].substr(11);
 				tmpStr = ft_strtrim(tmpStr, " \t");
 				_autoIndex = (tmpStr == "on" ? true : false);
 			}
@@ -37,30 +28,13 @@ Server::Server(const std::vector<std::string> &conf)
 			_servername = ft_strtrim(conf[i].substr(12), " \t");
 		else if (conf[i].find("error_page:") != std::string::npos)
 		{
-			std::string					tmpStr;
-			std::vector<std::string>	tmpStrVec;
-
-			tmpStr = ft_strtrim(conf[i].substr(11), " \t");
-			tmpStrVec = ft_split(tmpStr, " ");
+			std::string					tmpStr = ft_strtrim(conf[i].substr(11), " \t");
+			std::vector<std::string>	tmpStrVec = ft_split(tmpStr, " ");
 			_errors[std::atoi(tmpStrVec[0].c_str())] = tmpStrVec[1];
 		}
 		else if (conf[i].find("location:") != std::string::npos)
 			i = _parseLocation(conf, i);
 	}
-	// bzero(&_addr, _addrLen);
-	// _addr.sin_family = AF_INET;
-	// _addrLen = sizeof(_addr);
-	// _sockFd = socket(AF_INET, SOCK_STREAM, 0);	/*	создание сокета	*/
-	// if (_sockFd == -1)
-	// 	throw std::string("socket error");
-	// fcntl(_sockFd, F_SETFL, O_NONBLOCK);	/*	перевод сокета в неблокирующий режим	*/
-	// if (setsockopt(_sockFd, SOL_SOCKET, SO_REUSEADDR, &reuseOpt, sizeof(reuseOpt)) == -1)	/*	повторное использование порта	*/
-	// 	throw std::string("setsockopt error");
-	// if (bind(_sockFd, (sockaddr*)&_addr, _addrLen) == -1)	/*	привязка сокета к адресу	*/
-	// 	throw std::string("bind error");
-	// if (listen(_sockFd, 128) == -1)	/*	перевод сокета в слушающий режим	*/
-	// 	throw std::string("listen error");
-	// std::cout << "\033[1;35m\t\tserver: " << htons(_addr.sin_port) << " listening\033[0m" << std::endl;
 }
 
 Server::Server(const Server &other) { *this = other; }
@@ -70,7 +44,6 @@ Server::~Server() {}
 void	Server::run()
 {
 	int reuseOpt = 1;
-
 	inet_aton(_host_port.first.c_str(), &_addr.sin_addr);
 	_addr.sin_port = htons(stoi(_host_port.second));
 	bzero(&_addr, _addrLen);
@@ -87,7 +60,6 @@ void	Server::run()
 	if (listen(_sockFd, 128) == -1)	/*	перевод сокета в слушающий режим	*/
 		throw std::string("listen error");
 	std::cout << "\033[1;35m\t\tserver: " << htons(_addr.sin_port) << " listening\033[0m" << std::endl;
-
 }
 
 size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
@@ -98,7 +70,6 @@ size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 		location	loc;
 		loc.root = _root;
 		loc.index = _index;
-		// loc.autoIndex = _autoIndex;
 		loc.cgi.first = "";
 		loc.cgi.second = "";
 		tmpStr = conf[i].substr(9);
@@ -112,45 +83,34 @@ size_t	Server::_parseLocation(const std::vector<std::string> &conf, size_t i)
 				tmpStr = ft_strtrim(tmpStr, " \t");
 				loc.methods = ft_split(tmpStr, " ");
 			}
-			if (conf[i].find("index:") != std::string::npos)
+			else if (conf[i].find("index:") != std::string::npos)
 			{
-				// if (conf[i].find("auto_index:") != std::string::npos)
-				// {
-				// 	tmpStr = conf[i].substr(11);
-				// 	tmpStr = ft_strtrim(tmpStr, " \t");
-				// 	loc.autoIndex = (tmpStr == "on" ? true : false);
-				// }
-				// else
-				// {
-					tmpStr = conf[i].substr(6);
-					loc.index = ft_strtrim(tmpStr, " \t");
-				// }
+				tmpStr = conf[i].substr(6);
+				loc.index = ft_strtrim(tmpStr, " \t");
 			}
-			if (conf[i].find("root:") != std::string::npos)
+			else if (conf[i].find("root:") != std::string::npos)
 			{
 				tmpStr = conf[i].substr(5);
 				loc.root = ft_strtrim(tmpStr, " \t");
 			}
-			if (conf[i].find("max_body_size:") != std::string::npos)
+			else if (conf[i].find("max_body_size:") != std::string::npos)
 			{
 				tmpStr = conf[i].substr(14);
 				tmpStr = ft_strtrim(tmpStr, " \t");
 				loc.maxBodySize = atoi(tmpStr.c_str());
 			}
-			if (conf[i].find("redir:") != std::string::npos)
+			else if (conf[i].find("redir:") != std::string::npos)
 			{
 				loc.root = "";
 				loc.index = "";
-				// loc.autoIndex = false;
 				std::vector<std::string>	tmpStrVec;
 				tmpStr = conf[i].substr(6);
 				tmpStr = ft_strtrim(tmpStr, " \t");
 				tmpStrVec = ft_split(tmpStr, " ");
 				loc.redir = std::make_pair(std::atoi(tmpStrVec[0].c_str()), tmpStrVec[1]);
 			}
-			if (conf[i].find("cgi_path:") != std::string::npos)
+			else if (conf[i].find("cgi_path:") != std::string::npos)
 			{
-				// loc.autoIndex = false;
 				std::vector<std::string>	tmpStrVec;
 				tmpStr = conf[i].substr(9);
 				tmpStr = ft_strtrim(tmpStr, " \t");
@@ -175,8 +135,9 @@ int	Server::getClientSockFd(const int &itC) { return _clients[itC].getSockFd(); 
 void	Server::acceptNewClient()
 {
 	Client	newClient;
+	int		clientFd;
 
-	int clientFd = accept(_sockFd, (sockaddr*)&newClient.getAddrRef(), &newClient.getAddrLenRef());
+	clientFd = accept(_sockFd, (sockaddr*)&newClient.getAddrRef(), &newClient.getAddrLenRef());
 	if (clientFd == -1)
 		throw std::string("accept new client error");
 	fcntl(clientFd, F_SETFL, O_NONBLOCK);
@@ -215,6 +176,7 @@ void	Server::_readChunke(Client &client)
 	if (client.getChunkeSize() == 0)
 	{
 		char	buff[2];
+
 		bytesRead = recv(clientFd, buff, 1, 0);
 		if (bytesRead > 0)
 		{
@@ -421,6 +383,20 @@ std::string	Server::_makeDefaultPage()
 	page += "\t</body>\n";
 	page += "</html>\n";
 	return page;
+}
+
+std::string Server::_makeDefaultErrorPage(const std::string &errorStr)
+{
+	std::string	error_page;
+	error_page = "<!DOCTYPE html>\n";
+	error_page += "<html>\n";
+	error_page += "\t<head><title>" + errorStr +"</title></head>\n";
+	error_page += "\t<body bgcolor=\"white\">\n";
+	error_page += "\t\t<center><h1>" + errorStr + "</h1></center>\n";
+	error_page += "\t\t<hr><center><a href=\"https://github.com/aquinoa-nba\">Aquinoa</a> & <a href=\"https://github.com/ShamilSE\">Mismene</a> server</center>\n";
+	error_page += "\t</body>\n";
+	error_page += "</html>\n";
+	return error_page;
 }
 
 std::string	Server::_checkType(const std::string &url)
@@ -699,12 +675,17 @@ void		Server::_methodGet(Client &client)
 		client.setResponseStatus("404 Not Found");
 	if (content.empty())
 	{
-		in.open(path);
-		if (!in.is_open())
-			throw std::string(path + " [open error]");
-		ssbuff << in.rdbuf();
-		in.close();
-		content = ssbuff.str();
+		if (path == "default error")
+			content = _makeDefaultErrorPage("404 Not Found");
+		else
+		{
+			in.open(path);
+			if (!in.is_open())
+				throw std::string(path + " [open error]");
+			ssbuff << in.rdbuf();
+			in.close();
+			content = ssbuff.str();
+		}
 	}
 	client.setResponseContent(content);
 }

@@ -1,5 +1,7 @@
 #include "../includes/Server.hpp"
 #include <dirent.h>
+#include <fstream>
+#include <sstream>
 
 Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index("")
 {
@@ -560,6 +562,10 @@ void	Server::_boundaryHandler(const int &itC, std::string &boundary)
 	filename = filename.substr(0, filename.find("\r"));
 	filename = ft_strtrim(filename, "\"");
 	std::cout << "filename\n" << filename << std::endl;
+
+	std::ofstream file(filename);
+	file << body;
+	file.close();
 }
 
 void		Server::_methodPost(const int &itC)	//	!!!

@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iostream>
 
-Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index(""), buff(NULL), allReadedBytesCount(0), _autoIndex(false), _envCount(0), _env(nullptr)
+Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr), buff(NULL), allReadedBytesCount(0)
 {
 	_errors[404] = _errors[502] = "default error";
 	for (size_t i = 0; i < conf.size(); i++)
@@ -46,9 +46,9 @@ Server::~Server() {}
 void	Server::run()
 {
 	int reuseOpt = 1;
+	// bzero(&_addr, _addrLen);
 	inet_aton(_host_port.first.c_str(), &_addr.sin_addr);
 	_addr.sin_port = htons(stoi(_host_port.second));
-	bzero(&_addr, _addrLen);
 	_addr.sin_family = AF_INET;
 	_addrLen = sizeof(_addr);
 	_sockFd = socket(AF_INET, SOCK_STREAM, 0);	/*	создание сокета	*/
@@ -279,6 +279,8 @@ void	Server::readRequest(Client &client)
 		std::string requestHeader = client.getRequest().getRequest();
 		if (requestHeader.find("\r\n\r\n") != std::string::npos)
 		{
+			std::cout << "\t\tREQUEST\n";
+			std::cout << client.getRequest().getRequest() << std::endl;
 			client.parseRequestHeader();
 			if (client.getRequest().getHeaderByKey("Content-Length") != "")
 				client.setStatus(PARTIAL_CONTENT);
@@ -735,6 +737,8 @@ void		Server::sendResponse(Client &client)
 		throw std::string("send response error");
 	if (client.getAllBytesSend() == client.getResponse().size())
 	{
+		std::cout << "\t\tRESPONSE\n";
+		std::cout << client.getResponse() << std::endl;
 		client.clearRequest();
 		client.clearResponse();
 		client.setAllBytesSend(0);

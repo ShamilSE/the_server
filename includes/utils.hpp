@@ -10,5 +10,4 @@ char** mapToCharArray(std::map<std::string, std::string> map, std::string delime
 char	*ft_strdup(const char *s1);
 size_t	ft_strlen(const char *str);
 char	*ft_strjoin(const char *s1, const char *s2);
-
 void	ft_memcpy(const void *dst, const void *src, size_t n);

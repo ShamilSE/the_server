@@ -27,6 +27,8 @@ int		Client::getSockFd() { return this->_sockFd; }
 int		Client::getStatus() { return _status; }						//	!!!
 void	Client::setStatus(const int &status) { _status = status; }	//	!!!
 
+void			Client::setResponseLocation(const std::string &location) { _response.setLocation(location); }
+
 sockaddr_in&	Client::getAddrRef() { return this->_addr; }
 
 socklen_t&		Client::getAddrLenRef() { return this->_addrLen; }

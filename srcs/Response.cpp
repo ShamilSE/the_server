@@ -11,8 +11,8 @@ std::string	Response::getResponse()
 	std::string response;
 
 	response = "HTTP/1.1 " + _status;
-	// if (!_url.empty())
-	// 	response += "\nLocation: " + _url;
+	if (_status == "302 Found")
+		response += "\nLocation: " + _location;
 	response += "\nConnection: Keep-alive";
 	response += "\nStatus: " + _status;
 	response += "\nContent-Length: " + std::to_string(_content.size());
@@ -25,12 +25,11 @@ std::string Response::getHeader()
 	std::string header;
 
 	header = "HTTP/1.1 " + _status;
-	// if (!_url.empty())
-	// 	header += "\nLocation: " + _url;
+	if (_status == "302 Found")
+		header += "\nLocation: " + _location;
 	header += "\nConnection: Keep-alive";
 	header += "\nStatus: " + _status;
 	header += "\nContent-Length: " + std::to_string(_content.size());
-	header += "\r\n\r\n<+===CONTENT===+>";
 	return header;
 }
 
@@ -39,6 +38,8 @@ void	Response::setStatus(const std::string &status) { _status = status; }
 void	Response::setUrl(const std::string &url) { _url = url; }
 
 void	Response::setContent(const std::string &content) { _content = content; }
+
+void		Response::setLocation(const std::string &location) { _location = location; }
 
 bool	Response::isResponse()
 {

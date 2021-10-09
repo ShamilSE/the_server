@@ -8,6 +8,7 @@ class Response
 		std::string		_status;
 		std::string		_content;
 		std::string		_url;
+		std::string		_location;
 
 	public:
 		Response();
@@ -18,6 +19,7 @@ class Response
 		void		setStatus(const std::string&);
 		void		setContent(const std::string&);
 		void		setUrl(const std::string &);
+		void		setLocation(const std::string &);
 
 
 		std::string	getResponse();

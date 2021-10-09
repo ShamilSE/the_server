@@ -9,6 +9,7 @@ SRCS	=	main.cpp \
 			Response.cpp \
 			ft_strtrim.cpp \
 			ft_split.cpp \
+			ft_memcpy.cpp \
 			mapToCharArray.cpp \
 			ft_strdup.cpp \
 			ft_strjoin.cpp

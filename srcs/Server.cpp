@@ -2,8 +2,9 @@
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
-Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index("")
+Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index(""), buff(NULL), allReadedBytesCount(0)
 {
 	int reuseOpt = 1;
 
@@ -239,9 +240,6 @@ ssize_t	Server::_readChunke(const int &itC)
 				client.addAllChunke(client.getChunke());
 				client.clearChunke();
 				client.clearChunkeSize();
-				// std::cout << "\033[1;35m\t\tchunked request from client (";
-				// std::cout << client;
-				// std::cout << ")\033[0m" << std::endl;
 			}
 		}
 		else if (bytesRead == 0)
@@ -262,17 +260,15 @@ ssize_t	Server::readRequest(const int &itC)
 		return _readChunke(itC);
 	else if (client.getStatus() == PARTIAL_CONTENT)
 	{
-		buffer_size = 500;
+		buffer_size = BUFSIZ;
 		char	buff[buffer_size];
-		int	allReadedBytesCount = 0;
 
-		while (allReadedBytesCount < std::stoi(client.getRequest().getHeaderByKey("Content-Length")))
+		while (allReadedBytesCount < std::stoul(client.getRequest().getHeaderByKey("Content-Length")))
 		{
 			bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
 			if (bytesRead > 0)
 			{
-				buff[bytesRead] = 0;
-				client.setRequestBody(buff);
+				ft_add(this->buff, buff, bytesRead, allReadedBytesCount);
 				allReadedBytesCount += bytesRead;
 			}
 			else if (bytesRead == 0)
@@ -298,7 +294,6 @@ ssize_t	Server::readRequest(const int &itC)
 			else if (bytesRead == 0)
 				return bytesRead;
 		}
-		std::cout << "header:\n" << allRequest << std::endl;
 		client.setRequest(allRequest);
 		client.parseRequestHeader();
 		if (client.getRequest().getHeaderByKey("Content-Length") != "")
@@ -544,28 +539,27 @@ void	Server::_boundaryHandler(const int &itC, std::string &boundary)
 {
 	Client			&client = _clients[itC];
 	boundary = boundary.substr(boundary.find("boundary=") + 9);
-	// boundary = boundary.substr(boundary.find_first_not_of('-'));
 	boundary = ft_strtrim(boundary, "-\r\n");
 
-	std::string body = client.getRequest().getBody();
+	(void)client;
+
+	std::string body(buff, allReadedBytesCount);
+
 	body = ft_strtrim(body, "-\r\n");
 	body = body.substr(body.find_first_not_of(boundary), body.find_last_not_of(boundary) - body.find_first_not_of(boundary));
 	body = ft_strtrim(body, "-\r\n");
-	// std::cout << "file content\n" << body << std::endl;
+
 	std::vector<std::string>	splitBody = ft_split(body, "\r\n\r\n");
 
 	std::string header = splitBody[0];
 	body = splitBody[1];
-	std::cout << "header\n" << header << std::endl;
-	std::cout << "body\n" << body << std::endl;
 	std::string filename = header.substr(header.find("filename=") + 9);
 	filename = filename.substr(0, filename.find("\r"));
 	filename = ft_strtrim(filename, "\"");
-	std::cout << "filename\n" << filename << std::endl;
 
-	std::ofstream file(filename);
-	file << body;
-	file.close();
+	std::ofstream outfile(filename, std::ios::binary);
+	outfile.write(body.c_str(), body.length());
+	outfile.close();
 }
 
 void		Server::_methodPost(const int &itC)	//	!!!
@@ -612,8 +606,6 @@ void		Server::_methodPost(const int &itC)	//	!!!
 		std::string boundary = client.getHeaderInfo("Content-Type");
 		if (boundary != "")
 		{
-			std::cout << client.getHeaderInfo("Content-Length") << std::endl;
-			std::cout << client.getRequest().getBody().size() << std::endl;
 			_boundaryHandler(itC, boundary);
 			return ;
 		}
@@ -908,4 +900,21 @@ void	Server::disconectUser(const int &itC)
 	std::cout << "\033[1;35m\t\tclose conection (" << client << ")" << "\033[0m" << std::endl;
 	close(client.getSockFd());
 	_clients.erase(_clients.begin() + itC);
+}
+
+void Server::ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size) {
+	size_t i = 0;
+
+	size_t new_dst_size = (dst_size + buf_size);
+	char *_realloc_body = dst;
+	dst = (char *)malloc(new_dst_size);
+	if (dst_size)
+	{
+		ft_memcpy(dst, _realloc_body, dst_size);
+		free(_realloc_body);
+		i = dst_size;
+	}
+	for (size_t it = 0 ; i < new_dst_size; ++i, ++it)
+		dst[i] = buf[it];
+	dst[i] = '\0';
 }

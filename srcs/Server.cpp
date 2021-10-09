@@ -3,7 +3,7 @@
 #include <iostream>
 #include <fstream>
 
-Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index("")
+Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index(""), buff(NULL), allReadedBytesCount(0)
 {
 	int reuseOpt = 1;
 
@@ -261,8 +261,6 @@ ssize_t	Server::readRequest(const int &itC)
 	{
 		buffer_size = BUFSIZ;
 		char	buff[buffer_size];
-		size_t	allReadedBytesCount = 0;
-		// std::stringstream	out;
 
 		while (allReadedBytesCount < std::stoul(client.getRequest().getHeaderByKey("Content-Length")))
 		{
@@ -270,16 +268,11 @@ ssize_t	Server::readRequest(const int &itC)
 			if (bytesRead > 0)
 			{
 				ft_add(this->buff, buff, bytesRead, allReadedBytesCount);
-				// out << buff;
 				allReadedBytesCount += bytesRead;
 			}
 			else if (bytesRead == 0)
 				return (ssize_t)allReadedBytesCount;
 		}
-		std::fstream outfile("hui", std::ios::binary);
-		outfile << this->buff;
-		// outfile << out << std::endl;
-		outfile.close();
 		client.setStatus(WAITING_FOR_RESPONSE);
 		makeClientResponse(itC);
 		return allReadedBytesCount;
@@ -545,10 +538,12 @@ void	Server::_boundaryHandler(const int &itC, std::string &boundary)
 {
 	Client			&client = _clients[itC];
 	boundary = boundary.substr(boundary.find("boundary=") + 9);
-	// boundary = boundary.substr(boundary.find_first_not_of('-'));
 	boundary = ft_strtrim(boundary, "-\r\n");
 
-	std::string body = client.getRequest().getBody();
+	(void)client;
+
+	std::string body(buff, allReadedBytesCount);
+
 	body = ft_strtrim(body, "-\r\n");
 	body = body.substr(body.find_first_not_of(boundary), body.find_last_not_of(boundary) - body.find_first_not_of(boundary));
 	body = ft_strtrim(body, "-\r\n");
@@ -562,7 +557,7 @@ void	Server::_boundaryHandler(const int &itC, std::string &boundary)
 	filename = ft_strtrim(filename, "\"");
 
 	std::ofstream outfile(filename, std::ios::binary);
-	outfile << body << std::endl;
+	outfile.write(body.c_str(), body.length());
 	outfile.close();
 }
 
@@ -610,9 +605,6 @@ void		Server::_methodPost(const int &itC)	//	!!!
 		std::string boundary = client.getHeaderInfo("Content-Type");
 		if (boundary != "")
 		{
-			std::cout << client.getHeaderInfo("Content-Length") << std::endl;
-			std::cout << client.getRequest().getBody().size() << std::endl;
-
 			_boundaryHandler(itC, boundary);
 			return ;
 		}
@@ -909,13 +901,19 @@ void	Server::disconectUser(const int &itC)
 	_clients.erase(_clients.begin() + itC);
 }
 
-void Server::ft_add(char *&dst, char *buf, int buf_size, size_t& dst_size) {
-		dst_size = (dst_size + buf_size);
-		char *_realloc_body = dst;
-		dst = (char *)malloc(dst_size);
+void Server::ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size) {
+	size_t i = 0;
+
+	size_t new_dst_size = (dst_size + buf_size);
+	char *_realloc_body = dst;
+	dst = (char *)malloc(new_dst_size);
+	if (dst_size)
+	{
 		ft_memcpy(dst, _realloc_body, dst_size);
 		free(_realloc_body);
-	for (int i = 0; i < buf_size; ++i, ++dst_size)
-		dst[dst_size] = buf[i];
-	dst[dst_size] = '\0';
+		i = dst_size;
+	}
+	for (size_t it = 0 ; i < new_dst_size; ++i, ++it)
+		dst[i] = buf[it];
+	dst[i] = '\0';
 }

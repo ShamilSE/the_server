@@ -48,7 +48,8 @@ class Server
 		void		_boundaryHandler(const int &, std::string &);
 
 		char		*buff;
-		void 		ft_add(char *&dst, char *buf, int buf_size, size_t& dst_size);
+		size_t	allReadedBytesCount;
+		void 		ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size);
 
 
 	public:

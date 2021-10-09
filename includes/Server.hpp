@@ -45,6 +45,8 @@ class Server
 		void		_makeCgiEnv(const int &itC);
 		void 		execCGI(const int &itC,  const std::string &path);
 
+		void		_boundaryHandler(const int &, std::string &);
+
 
 	public:
 		Server(const std::vector<std::string> &);

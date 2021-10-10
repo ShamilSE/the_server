@@ -4,7 +4,8 @@
 #include <sstream>
 #include <iostream>
 
-Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr)
+Server::Server(const std::vector<std::string> &conf)
+	: _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr)
 {
 	_errors[404] = _errors[502] = "default error";
 	for (size_t i = 0; i < conf.size(); i++)
@@ -248,19 +249,22 @@ void	Server::readRequest(Client &client)
 		buffer_size = BUFSIZ;
 		char	buff[buffer_size];
 
-		while (client.allReadedBytesCount < std::stoul(client.getRequest().getHeaderByKey("Content-Length")))
+		bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
+		if (bytesRead > 0)
 		{
-			bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
-			if (bytesRead > 0)
-			{
-				ft_add(client.buff, buff, bytesRead, client.allReadedBytesCount);
-				client.allReadedBytesCount += bytesRead;
-			}
-			else if (bytesRead == 0)
-				client.setStatus(CLOSE_CONECTION);
+			ft_add(client.buff, buff, bytesRead, client.allReadedBytesCount);
+			client.allReadedBytesCount += bytesRead;
 		}
-		client.setStatus(WAITING_FOR_RESPONSE);
-		makeClientResponse(client);
+		else if (bytesRead == 0)
+			client.setStatus(CLOSE_CONECTION);
+		else if (bytesRead == -1 )
+			throw std::string("recv partial error");
+		if (client.allReadedBytesCount >= std::stoul(client.getRequest().getHeaderByKey("Content-Length")))
+		{
+			client.setStatus(WAITING_FOR_RESPONSE);
+			makeClientResponse(client);
+		}
+		
 	}
 	else
 	{

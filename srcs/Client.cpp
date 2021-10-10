@@ -4,6 +4,8 @@ Client::Client() : _sockFd(-1), _addrLen(sizeof(sockaddr_in)), _request(Request(
 {
 	bzero(&_chunkeSize, sizeof(_chunkeSize));
 	bzero(&_addr, _addrLen);
+	buff = NULL;
+	allReadedBytesCount = 0;
 }
 
 Client::Client(const Client &other) { *this = other; }

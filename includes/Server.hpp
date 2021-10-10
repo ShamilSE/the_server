@@ -39,10 +39,8 @@ class Server
 		bool		_isEndOfChunke(Client &);
 		bool		_isMethodAllow(const location &, const std::string &);
 
-		void		_boundaryHandler(std::string &);
+		void		_boundaryHandler(std::string &boundary, Client& client);
 
-		char		*buff;
-		size_t	allReadedBytesCount;
 		void 		ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size);
 
 		void		_makeCgiEnv(Client &);

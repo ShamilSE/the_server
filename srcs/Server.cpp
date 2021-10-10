@@ -5,7 +5,7 @@
 #include <iostream>
 
 Server::Server(const std::vector<std::string> &conf)
-	: _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr)
+	: _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _cgiEnv(nullptr)
 {
 	_errors[404] = _errors[502] = "default error";
 	for (size_t i = 0; i < conf.size(); i++)
@@ -264,7 +264,6 @@ void	Server::readRequest(Client &client)
 			client.setStatus(WAITING_FOR_RESPONSE);
 			makeClientResponse(client);
 		}
-		
 	}
 	else
 	{
@@ -296,6 +295,78 @@ void	Server::readRequest(Client &client)
 	}
 }
 
+void		Server::_methodDelete(Client &client)
+{
+	std::string		url = client.getRequest().getUrl();
+	location		location;
+	size_t			pos;
+	std::string		path = "";
+	size_t			locationIndex;
+
+	if (url != "/" && url.back() == '/')
+		url.pop_back();
+	for (size_t i = 0; i < _locations.size(); ++i)
+	{
+		location = _locations[i];
+		if (location.name != "/" && location.name.back() == '/')
+			location.name.pop_back();
+		if (location.root.back() == '/')
+			location.root.pop_back();
+		if ((pos = url.find(location.name)) != std::string::npos)
+		{
+			if (pos == 0)
+			{
+				if (location.name > path)
+				{
+					path = location.name;
+					locationIndex = i;
+				}
+			}
+		}
+	}
+	if (path != "")
+	{
+		location = _locations[locationIndex];
+		if (_isMethodAllow(location, client.getRequest().getMethod()))
+			client.setResponseStatus("200 OK");
+		else
+		{
+			client.setResponseStatus("405 Method Not Allowed");
+			return ;
+		}
+		url.replace(0, location.name.length(), location.root);
+		int		pid, status;
+		char**		args = new char*[3];
+		args[0] = ft_strdup("/bin/rm");
+		args[1] = ft_strdup(url.c_str());
+		args[2] = 0;
+
+		if ((pid = fork()) == 0)
+			exit(execv(args[0], args));
+		else if (pid == -1)
+			client.setResponseStatus("500 Internal Server Error");
+		else
+		{
+			wait(&status);
+			if (status)
+				client.setResponseStatus("500 Internal Server Error");
+			else
+			{
+				std::string html = ""
+					"<html>\n"
+					"\t<body>\n"
+					"\t\t<h1>File deleted.</h1>\n"
+					"\t</body>\n"
+					"</html>";
+				client.setResponseContent(html);
+			}
+			free(args[0]);
+			free(args[1]);
+			free(args);
+		}
+	}
+}
+
 void	Server::makeClientResponse(Client &client)
 {
 	std::string method = client.getRequest().getMethod();
@@ -303,6 +374,8 @@ void	Server::makeClientResponse(Client &client)
 		_methodGet(client);
 	else if (method == "POST" || method == "PUT")
 		_methodPost(client);
+	else if (method == "DELETE")
+		_methodDelete(client);
 	else
 		client.setResponseStatus("405 Method Not Allowed");
 	client.setStatus(WAITING_FOR_RESPONSE);
@@ -415,7 +488,7 @@ std::string	Server::_checkType(const std::string &url)
 							".wav", ".bmp", ".jpg", ".jpeg", ".gif", ".png", ".xpm", ".ico",
 							".html", ".css", ".csv", ".txt", ".rtx", ".yaml", ".bmp", ".3gp",
 							".mp4", ".mpeg", ".avi", ".movie",
-							".bad_extension", ".bla", ".pouic", NULL };
+							".bad_extension", ".bla", ".pouic", ".pkg", NULL };
 
 	for (size_t i = 0; types[i] != NULL; ++i)
 	{
@@ -520,7 +593,8 @@ void		Server::_methodPost(Client &client)
 		}
 		url.replace(0, location.name.length(), location.root);
 		std::string boundary = client.getHeaderInfo("Content-Type");
-		if (boundary != "")
+		// if (boundary != "")
+		if (boundary.find("boundary") != std::string::npos)
 		{
 			_boundaryHandler(boundary, client);
 			client.allReadedBytesCount = 0;
@@ -779,21 +853,21 @@ void	Server::_makeCgiEnv(Client &client)
 
 	request = client.getRequest();
 	_envCount = 14;
-	_env = (char**)calloc(_envCount, sizeof(char*));
-	_env[0] = ft_strdup("AUTH_TYPE=basic");
-	_env[1] = ft_strjoin("CONTENT_LENGTH=", std::to_string(request.getBody().size()).c_str());
-	_env[2] = ft_strjoin("CONTENT_TYPE=", (request.getHeaderByKey("Content-Type").c_str()));
-	_env[3] = ft_strdup("GATEWAY_INTERFACE=CGI/1.1");
-	_env[4] = ft_strjoin("PATH_INFO=", request.getUrl().c_str());
-	_env[5] = ft_strjoin("PATH_TRANSLATED=", "/Users/mismene/ft_webserver/cgi/cgi_tester");
-	_env[6] = ft_strdup("REMOTE_ADDR=");
-	_env[7] = ft_strdup("REMOTE_IDENT=");
-	_env[8] = ft_strdup("REMOTE_USER=");
-	_env[9] = ft_strjoin("REQUEST_METHOD=", request.getMethod().c_str());
-	_env[10] = ft_strjoin("REQUEST_URI=http://", (client.getClientInfo() + request.getUrl()).c_str());
-	_env[11] = ft_strjoin("SERVER_PROTOCOL=", request.getProtocolV().c_str());
-	_env[12] = ft_strdup("HTTP_X_SECRET_HEADER_FOR_TEST=1");
-	_env[13] = nullptr;
+	_cgiEnv = (char**)calloc(_envCount, sizeof(char*));
+	_cgiEnv[0] = ft_strdup("AUTH_TYPE=basic");
+	_cgiEnv[1] = ft_strjoin("CONTENT_LENGTH=", std::to_string(request.getBody().size()).c_str());
+	_cgiEnv[2] = ft_strjoin("CONTENT_TYPE=", (request.getHeaderByKey("Content-Type").c_str()));
+	_cgiEnv[3] = ft_strdup("GATEWAY_INTERFACE=CGI/1.1");
+	_cgiEnv[4] = ft_strjoin("PATH_INFO=", request.getUrl().c_str());
+	_cgiEnv[5] = ft_strjoin("PATH_TRANSLATED=", "/Users/mismene/ft_webserver/cgi/cgi_tester");
+	_cgiEnv[6] = ft_strdup("REMOTE_ADDR=");
+	_cgiEnv[7] = ft_strdup("REMOTE_IDENT=");
+	_cgiEnv[8] = ft_strdup("REMOTE_USER=");
+	_cgiEnv[9] = ft_strjoin("REQUEST_METHOD=", request.getMethod().c_str());
+	_cgiEnv[10] = ft_strjoin("REQUEST_URI=http://", (client.getClientInfo() + request.getUrl()).c_str());
+	_cgiEnv[11] = ft_strjoin("SERVER_PROTOCOL=", request.getProtocolV().c_str());
+	_cgiEnv[12] = ft_strdup("HTTP_X_SECRET_HEADER_FOR_TEST=1");
+	_cgiEnv[13] = nullptr;
 }
 
 void	Server::_CGI(Client &client, const std::string &path)
@@ -805,9 +879,9 @@ void	Server::_CGI(Client &client, const std::string &path)
 	char		buff[BUFSIZ];
 	std::string	result_buf = "";
 	int			status = 0;
-	char**		_argv = new char*[2];
-	_argv[0] = ft_strdup(path.c_str());
-	_argv[1] = 0;
+	char**		args = new char*[2];
+	args[0] = ft_strdup(path.c_str());
+	args[1] = 0;
 
 	if (pipe(pipeFd) != 0)
 	{
@@ -822,7 +896,7 @@ void	Server::_CGI(Client &client, const std::string &path)
 		dup2(file_fd, 1);
 		close(file_fd);
 		_makeCgiEnv(client);
-		exit(execve(_argv[0], _argv, _env));
+		exit(execve(args[0], args, _cgiEnv));
 	}
 	else if (pid == -1)
 		client.setResponseStatus("500 Internal Server Error");
@@ -853,8 +927,8 @@ void	Server::_CGI(Client &client, const std::string &path)
 			close(file_fd);
 			client.setResponseStatus("200 OK");
 			client.setResponseContent(std::string(result_buf).substr(std::string(result_buf).find("\r\n\r\n") + 4));
-			free(_argv[0]);
-			free(_argv);
+			free(args[0]);
+			free(args);
 		}
 		else
 			client.setResponseStatus("500 Internal Server Error");

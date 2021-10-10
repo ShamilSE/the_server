@@ -20,13 +20,14 @@ class Server
 		std::vector<location>		_locations;
 		std::vector<Client>			_clients;
 		size_t 						_envCount;
-		char**						_env;
+		char						**_cgiEnv;
 
 		std::string	_makeAutoindex(Client &);
 
 		size_t		_parseLocation(const std::vector<std::string> &, size_t);
 		void		_methodGet(Client &);
 		void		_methodPost(Client &);
+		void		_methodDelete(Client &);
 		std::string	_createListing(std::string &);
 		void		_createListingStart(std::string &);
 		void		_addRefToListing(std::string &, std::string &, std::string);

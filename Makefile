@@ -1,4 +1,3 @@
-
 VPATH	=	srcs includes
 
 SRCS	=	main.cpp \

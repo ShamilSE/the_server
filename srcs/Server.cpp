@@ -47,7 +47,7 @@ Server::~Server() {}
 void	Server::run()
 {
 	int reuseOpt = 1;
-	// bzero(&_addr, _addrLen);
+	bzero(&_addr, _addrLen);
 	inet_aton(_host_port.first.c_str(), &_addr.sin_addr);
 	_addr.sin_port = htons(stoi(_host_port.second));
 	_addr.sin_family = AF_INET;
@@ -246,7 +246,7 @@ void	Server::readRequest(Client &client)
 		_readChunke(client);
 	else if (client.getStatus() == PARTIAL_CONTENT) // #readingbody
 	{
-		buffer_size = 100000;
+		buffer_size = 60000;
 		char	buff[buffer_size];
 
 		bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
@@ -282,8 +282,8 @@ void	Server::readRequest(Client &client)
 		std::string requestHeader = client.getRequest().getRequest();
 		if (requestHeader.find("\r\n\r\n") != std::string::npos)
 		{
-			std::cout << "\t\tREQUEST\n";
-			std::cout << client.getRequest().getRequest() << std::endl;
+			// std::cout << "\t\tREQUEST\n";
+			// std::cout << client.getRequest().getRequest() << std::endl;
 			client.parseRequestHeader();
 			if (client.getRequest().getHeaderByKey("Content-Length") != "")
 				client.setStatus(PARTIAL_CONTENT);
@@ -526,7 +526,7 @@ bool	Server::_findFile(const std::string &path, const std::string &filename)
 	return false;		//	file not found
 }
 
-void	Server::_boundaryHandler(std::string &boundary, Client& client)
+void	Server::_boundaryHandler(std::string &boundary, Client& client, std::string &url)
 {
 	boundary = boundary.substr(boundary.find("boundary=") + 9);
 	boundary = ft_strtrim(boundary, "-\r\n");
@@ -545,12 +545,16 @@ void	Server::_boundaryHandler(std::string &boundary, Client& client)
 	filename = filename.substr(0, filename.find("\r"));
 	filename = ft_strtrim(filename, "\"");
 
-	std::ofstream outfile(filename, std::ios::binary);
+	std::string path = url + "/" +filename;
+	std::ofstream outfile(path, std::ios::binary);
 	outfile.write(body.c_str(), body.length());
 	outfile.close();
-	free(client.buff);
-	client.buff = NULL;
-
+	if (client.buff != NULL)
+	{
+		free(client.buff);
+		client.buff = NULL;
+		client.allReadedBytesCount = 0;
+	}
 	std::string html = ""
 	"<html>\n"
 	"\t<body>\n"
@@ -601,11 +605,9 @@ void		Server::_methodPost(Client &client)
 		}
 		url.replace(0, location.name.length(), location.root);
 		std::string boundary = client.getHeaderInfo("Content-Type");
-		// if (boundary != "")
 		if (boundary.find("boundary") != std::string::npos)
 		{
-			_boundaryHandler(boundary, client);
-			client.allReadedBytesCount = 0;
+			_boundaryHandler(boundary, client, url);
 			return ;
 		}
 		if (!location.cgi.first.empty() && _checkType(client.getRequest().getUrl()) == location.cgi.first)
@@ -616,7 +618,7 @@ void		Server::_methodPost(Client &client)
 		if (url == location.root)
 		{
 			if (location.maxBodySize >= client.getRequest().getBody().size())
-				url += "/file";
+				url += "/post_from_" + std::to_string(ntohs(client.getAddrRef().sin_port));
 			else
 			{
 				client.setResponseStatus("413 Payload Too Large");
@@ -627,7 +629,9 @@ void		Server::_methodPost(Client &client)
 		out.open(url);
 		if (!out.is_open())
 			throw std::string("open err!!!");
-		std::string content = client.getRequest().getBody();
+		std::string content(client.getRequest().getBody());
+		if (content.empty())
+			content = std::string(client.buff, client.allReadedBytesCount);
 		content = ft_strtrim(content, "0\r\n\r\n");
 		out.write(content.c_str(), content.size());
 		out.close();
@@ -826,8 +830,8 @@ void		Server::sendResponse(Client &client)
 		throw std::string("send response error");
 	if (client.getAllBytesSend() == client.getResponse().size())
 	{
-		std::cout << "\t\tRESPONSE\n";
-		std::cout << client.getResponse() << std::endl;
+		// std::cout << "\t\tRESPONSE\n";
+		// std::cout << client.getResponse() << std::endl;
 		client.clearRequest();
 		client.clearResponse();
 		client.setAllBytesSend(0);
@@ -955,16 +959,15 @@ std::vector<Client>::iterator	Server::disconectUser(const int &itC)
 	return _clients.erase(_clients.begin() + itC);
 }
 
-void Server::ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size) {
+void Server::ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size)
+{
 	size_t i = 0;
 
 	size_t new_dst_size = (dst_size + buf_size);
 	char *_realloc_body = dst;
 	dst = (char *)malloc(new_dst_size);
 	if (dst == NULL)
-	{
 		throw "malloc error";
-	}
 	if (dst_size)
 	{
 		ft_memcpy(dst, _realloc_body, dst_size);
@@ -975,3 +978,5 @@ void Server::ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size) {
 		dst[i] = buf[it];
 	dst[i] = '\0';
 }
+
+std::pair<std::string, std::string>	Server::getHostPort() const { return this->_host_port; }

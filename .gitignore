@@ -7,4 +7,4 @@ webserv
 CGI_file
 Servers/www4242/put_files/multiple_same
 Servers/www4242/put_files/file_should_exist_after
-Servers/www4242/post_files/file
+Servers/www4242/post_files/*

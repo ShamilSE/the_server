@@ -40,9 +40,9 @@ class Server
 		bool		_isEndOfChunke(Client &);
 		bool		_isMethodAllow(const location &, const std::string &);
 
-		void		_boundaryHandler(std::string &boundary, Client& client);
+		void		_boundaryHandler(std::string &, Client &, std::string &);
 
-		void 		ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size);
+		void 		ft_add(char *&, char *, size_t, size_t);
 
 		void		_makeCgiEnv(Client &);
 		void		_CGI(Client &, const std::string &);
@@ -61,9 +61,9 @@ class Server
 		int						getSockFd();
 		unsigned int			getClientsCount();
 		Client&					getClientRef(const int &);
-		int						getClientSockFd(const int &);	//	!!!
+		int						getClientSockFd(const int &);
 		std::string				getErrorByKey(int);
-		std::pair<std::string, std::string>	getHostPort() const { return this->_host_port; }
+		std::pair<std::string, std::string>	getHostPort() const;
 
 		void					setError(int, std::string);
 

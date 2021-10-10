@@ -1,11 +1,9 @@
 #include "../includes/Client.hpp"
 
-Client::Client() : _sockFd(-1), _addrLen(sizeof(sockaddr_in)), _request(Request()), _chunke(""), _chunkeSize(0), _allBytesSend(0)
+Client::Client() : _sockFd(-1), _addrLen(sizeof(sockaddr_in)), _request(Request()), _chunke(""), _chunkeSize(0), _allBytesSend(0), buff(NULL), allReadedBytesCount(0)
 {
 	bzero(&_chunkeSize, sizeof(_chunkeSize));
 	bzero(&_addr, _addrLen);
-	buff = NULL;
-	allReadedBytesCount = 0;
 }
 
 Client::Client(const Client &other) { *this = other; }
@@ -66,6 +64,9 @@ Client&			Client::operator = (const Client &other)
 		this->_allChanke = other._allChanke;
 		this->_status = other._status;
 		this->_allBytesSend = other._allBytesSend;
+		if (other.allReadedBytesCount > 0)
+			this->buff = ft_strdup(other.buff);
+		this->allReadedBytesCount = other.allReadedBytesCount;
 	}
 	return *this;
 }

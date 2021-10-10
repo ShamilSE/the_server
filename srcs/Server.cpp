@@ -244,9 +244,9 @@ void	Server::readRequest(Client &client)
 
 	if (client.getStatus() == CHUNKED)
 		_readChunke(client);
-	else if (client.getStatus() == PARTIAL_CONTENT)
+	else if (client.getStatus() == PARTIAL_CONTENT) // #readingbody
 	{
-		buffer_size = BUFSIZ;
+		buffer_size = 100000;
 		char	buff[buffer_size];
 
 		bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
@@ -550,6 +550,14 @@ void	Server::_boundaryHandler(std::string &boundary, Client& client)
 	outfile.close();
 	free(client.buff);
 	client.buff = NULL;
+
+	std::string html = ""
+	"<html>\n"
+	"\t<body>\n"
+	"\t\t<h1>File uploaded.</h1>\n"
+	"\t</body>\n"
+	"</html>";
+	client.setResponseContent(html);
 }
 
 void		Server::_methodPost(Client &client)
@@ -953,6 +961,10 @@ void Server::ft_add(char *&dst, char *buf, size_t buf_size, size_t dst_size) {
 	size_t new_dst_size = (dst_size + buf_size);
 	char *_realloc_body = dst;
 	dst = (char *)malloc(new_dst_size);
+	if (dst == NULL)
+	{
+		throw "malloc error";
+	}
 	if (dst_size)
 	{
 		ft_memcpy(dst, _realloc_body, dst_size);

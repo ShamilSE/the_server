@@ -80,6 +80,9 @@ class Client
 		void			addAllBytesSend(const size_t &bytes) { _allBytesSend += bytes; }
 
 		Client&			operator = (const Client &);
+
+		char*			buff;
+		size_t			allReadedBytesCount;
 };
 
 std::ostream&	operator << (std::ostream &, Client &);

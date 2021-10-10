@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iostream>
 
-Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr), buff(NULL), allReadedBytesCount(0)
+Server::Server(const std::vector<std::string> &conf) : _sockFd(-1), _root(""), _index(""), _autoIndex(false), _envCount(0), _env(nullptr)
 {
 	_errors[404] = _errors[502] = "default error";
 	for (size_t i = 0; i < conf.size(); i++)
@@ -248,13 +248,13 @@ void	Server::readRequest(Client &client)
 		buffer_size = BUFSIZ;
 		char	buff[buffer_size];
 
-		while (allReadedBytesCount < std::stoul(client.getRequest().getHeaderByKey("Content-Length")))
+		while (client.allReadedBytesCount < std::stoul(client.getRequest().getHeaderByKey("Content-Length")))
 		{
 			bytesRead = recv(client.getSockFd(), buff, buffer_size - 1, 0);
 			if (bytesRead > 0)
 			{
-				ft_add(this->buff, buff, bytesRead, allReadedBytesCount);
-				allReadedBytesCount += bytesRead;
+				ft_add(client.buff, buff, bytesRead, client.allReadedBytesCount);
+				client.allReadedBytesCount += bytesRead;
 			}
 			else if (bytesRead == 0)
 				client.setStatus(CLOSE_CONECTION);
@@ -449,12 +449,12 @@ bool	Server::_findFile(const std::string &path, const std::string &filename)
 	return false;		//	file not found
 }
 
-void	Server::_boundaryHandler(std::string &boundary)
+void	Server::_boundaryHandler(std::string &boundary, Client& client)
 {
 	boundary = boundary.substr(boundary.find("boundary=") + 9);
 	boundary = ft_strtrim(boundary, "-\r\n");
 
-	std::string body(buff, allReadedBytesCount);
+	std::string body(client.buff, client.allReadedBytesCount);
 
 	body = ft_strtrim(body, "-\r\n");
 	body = body.substr(body.find_first_not_of(boundary), body.find_last_not_of(boundary) - body.find_first_not_of(boundary));
@@ -471,6 +471,8 @@ void	Server::_boundaryHandler(std::string &boundary)
 	std::ofstream outfile(filename, std::ios::binary);
 	outfile.write(body.c_str(), body.length());
 	outfile.close();
+	free(client.buff);
+	client.buff = NULL;
 }
 
 void		Server::_methodPost(Client &client)
@@ -516,7 +518,8 @@ void		Server::_methodPost(Client &client)
 		std::string boundary = client.getHeaderInfo("Content-Type");
 		if (boundary != "")
 		{
-			_boundaryHandler(boundary);
+			_boundaryHandler(boundary, client);
+			client.allReadedBytesCount = 0;
 			return ;
 		}
 		if (!location.cgi.first.empty() && _checkType(client.getRequest().getUrl()) == location.cgi.first)

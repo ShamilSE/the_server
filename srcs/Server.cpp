@@ -47,7 +47,7 @@ Server::~Server() {}
 void	Server::run()
 {
 	int reuseOpt = 1;
-	bzero(&_addr, _addrLen);
+	// bzero(&_addr, _addrLen);
 	inet_aton(_host_port.first.c_str(), &_addr.sin_addr);
 	_addr.sin_port = htons(stoi(_host_port.second));
 	_addr.sin_family = AF_INET;
@@ -201,7 +201,10 @@ void	Server::_readChunke(Client &client)
 		else if (bytesRead == 0)
 			client.setStatus(CLOSE_CONECTION);
 		else if (bytesRead == -1 )
+		{
+			client.setStatus(CLOSE_CONECTION);
 			throw std::string("recv chunke size error");
+		}
 	}
 	else
 	{
@@ -231,8 +234,11 @@ void	Server::_readChunke(Client &client)
 		}
 		else if (bytesRead == 0)
 			client.setStatus(CLOSE_CONECTION);
-		else if (bytesRead == -1 )
+		else if (bytesRead == -1)
+		{
+			client.setStatus(CLOSE_CONECTION);
 			throw std::string("recv chunke error");
+		}
 	}
 }
 
@@ -257,7 +263,10 @@ void	Server::readRequest(Client &client)
 		else if (bytesRead == 0)
 			client.setStatus(CLOSE_CONECTION);
 		else if (bytesRead == -1 )
+		{
+			client.setStatus(CLOSE_CONECTION);
 			throw std::string("recv partial error");
+		}
 		if (client.allReadedBytesCount >= std::stoul(client.getRequest().getHeaderByKey("Content-Length")))
 			makeClientResponse(client);
 	}
@@ -274,11 +283,14 @@ void	Server::readRequest(Client &client)
 		else if (bytesRead == 0)
 			client.setStatus(CLOSE_CONECTION);
 		else if (bytesRead == -1)
+		{
+			client.setStatus(CLOSE_CONECTION);
 			throw std::string("recv request header error");
+		}
 		std::string requestHeader = client.getRequest().getRequest();
 		if (requestHeader.find("\r\n\r\n") != std::string::npos)
 		{
-			// std::cout << "\t\tREQUEST\n";
+			// std::cout << "\033[1;35m\t\trequest from (" << client << ")" << "\033[0m" << std::endl;
 			// std::cout << client.getRequest().getRequest() << std::endl;
 			client.parseRequestHeader();
 			if (client.getRequest().getHeaderByKey("Content-Length") != "")
@@ -823,8 +835,8 @@ void		Server::sendResponse(Client &client)
 		throw std::string("send response error");
 	if (client.getAllBytesSend() == client.getResponse().size())
 	{
-		// std::cout << "\t\tRESPONSE\n";
-		// std::cout << client.getResponse() << std::endl;
+		// std::cout << "\033[1;35m\t\tresponse for (" << client << ")" << "\033[0m" << std::endl;
+		// std::cout << client.getResponseHeader() << std::endl;
 		client.clearRequest();
 		client.clearResponse();
 		client.setAllBytesSend(0);

@@ -46,9 +46,9 @@ std::string		Client::getHeaderInfo(const std::string &key)
 	return _request.getHeaderByKey(key);
 }
 
-std::string		Client::getResponseHeader() { return _response.getHeader(); }
-
 std::string	Client::getResponse() { return this->_response.getResponse(); }
+
+std::string	Client::getResponseHeader() { return this->_response.getHeader(); }
 
 Client&			Client::operator = (const Client &other)
 {

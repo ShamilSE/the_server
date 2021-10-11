@@ -41,6 +41,7 @@ class Client
 		socklen_t&		getAddrLenRef();
 		Request			getRequest();			// !!!!
 		std::string		getResponse();
+		std::string		getResponseHeader();
 
 		void			setResponseStatus(const std::string &);
 		void			setResponseUrl(const std::string &);
@@ -68,7 +69,6 @@ class Client
 		void			clearChunke() { _chunke.clear(); }
 
 		std::string		getClientInfo();
-		std::string		getResponseHeader();
 
 		void			clearChunkeSize() { _chunkeSize = 0; }
 		void			addAllChunke(const std::string &chunke) { _allChanke += chunke; }

@@ -26,32 +26,29 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 		{
 			if (!tmpStrVec.empty())
 			{
-				try {
-					_addServer(Server(tmpStrVec));
-				} catch (const std::string &error) {
-					std::cerr << error << std::endl;
-				}
+				_addServer(Server(tmpStrVec));
 				tmpStrVec.clear();
 			}
 			continue ;
 		}
 		tmpStrVec.push_back(tmpStr);
 	}
-	try {
-		_addServer(Server(tmpStrVec));
-	} catch (const std::string &error) {
-		std::cerr << error << std::endl;
-	}
+	_addServer(Server(tmpStrVec));
 	if (_servers.empty())
-		exit(1);
-	for (std::vector<Server>::iterator it = _servers.begin(); it != _servers.end(); it++)
+		throw std::string("no running server");
+	std::vector<Server>::iterator it = _servers.begin();
+	while (it != _servers.end())
 	{
 		try {
 			it->run();
 		} catch (const std::string &error) {
 			std::cerr << error << std::endl;
-			it = _servers.erase(it);
+			if (_servers.erase(it) == _servers.end())
+				break ;
+			else
+				continue ;
 		}
+		++it;
 	}
 }
 

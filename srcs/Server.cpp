@@ -162,7 +162,6 @@ bool	Server::_isEndOfChunke(Client &client)
 	{
 		client.setRequestBody(client.getAllChunke());
 		makeClientResponse(client);
-		client.setStatus(WAITING_FOR_RESPONSE);
 		client.clearChunke();
 		client.clearAllChunke();
 		client.clearChunkeSize();
@@ -260,10 +259,7 @@ void	Server::readRequest(Client &client)
 		else if (bytesRead == -1 )
 			throw std::string("recv partial error");
 		if (client.allReadedBytesCount >= std::stoul(client.getRequest().getHeaderByKey("Content-Length")))
-		{
-			client.setStatus(WAITING_FOR_RESPONSE);
 			makeClientResponse(client);
-		}
 	}
 	else
 	{
@@ -383,27 +379,25 @@ void	Server::makeClientResponse(Client &client)
 
 void	Server::_createListingStart(std::string &content)
 {
-	content = "<!DOCTYPE HTML>\n";
-	content += "<html>\n";
-	content += "\t<head>\n";
-	content += "\t\t<meta charset=\"utf-8\">\n";
-	content += "\t</head>\n";
-	content += "\t<body>\n";
+	content = ""
+		"<!DOCTYPE HTML>\n"
+		"<html>\n"
+		"\t<head>\n"
+		"\t\t<meta charset=\"utf-8\">\n"
+		"\t</head>\n"
+		"\t<body>\n";
 }
 
 void	Server::_addRefToListing(std::string &content, std::string &ref, std::string fileName)
 {
-	content += "\t\t<p><a href=\"";
-	content += ref;
-	content += "\">";
-	content += fileName;
-	content += "</a></p>\n";
+	content += "\t\t<p><a href=\"" + ref + "\">" + fileName + "</a></p>\n";
 }
 
 void	Server::_createListingEnd(std::string &content)
 {
-	content += "\t</body>\n";
-	content += "</html>\n";
+	content += ""
+		"\t</body>\n"
+		"</html>\n";
 }
 
 
@@ -445,39 +439,38 @@ std::string	Server::_createListing(std::string &path)
 
 std::string	Server::_makeDefaultPage()
 {
-	std::string	page;
-
-	page = "<!DOCTYPE html>\n";
-	page += "<html>\n";
-	page += "\t<head>\n";
-	page += "\t\t<title>Welcome to Aquinoa's server!</title>\n";
-	page += "\t\t<style>\n";
-	page += "\t\t\thtml { color-scheme: light dark; }\n";
-	page += "\t\t\tbody { width: 35em; margin: 0 auto;\n";
-	page += "\t\t\tfont-family: Tahoma, Verdana, Arial, sans-serif; }\n";
-	page += "\t\t</style>\n";
-	page += "\t</head>\n";
-	page += "\t<body>\n";
-	page += "\t\t<h1>Welcome to <a href=\"https://github.com/aquinoa-nba\">Aquinoa</a> & <a href=\"https://github.com/ShamilSE\">Mismene</a> server!</h1>\n";
-	page += "\t\t<p>If you see this page, the web server is successfully installed and\n";
-	page += "\t\tworking. Further configuration is required.</p>\n";
-	page += "\t\t<p><em>Thank you for using this server.</em></p>\n";
-	page += "\t</body>\n";
-	page += "</html>\n";
+	std::string page = ""
+		"<!DOCTYPE html>\n"
+		"<html>\n"
+		"\t<head>\n"
+		"\t\t<title>Welcome to Aquinoa's server!</title>\n"
+		"\t\t<style>\n"
+		"\t\t\thtml { color-scheme: light dark; }\n"
+		"\t\t\tbody { width: 35em; margin: 0 auto;\n"
+		"\t\t\tfont-family: Tahoma, Verdana, Arial, sans-serif; }\n"
+		"\t\t</style>\n"
+		"\t</head>\n"
+		"\t<body>\n"
+		"\t\t<h1>Welcome to <a href=\"https://github.com/aquinoa-nba\">Aquinoa</a> & <a href=\"https://github.com/ShamilSE\">Mismene</a> server!</h1>\n"
+		"\t\t<p>If you see this page, the web server is successfully installed and\n"
+		"\t\tworking. Further configuration is required.</p>\n"
+		"\t\t<p><em>Thank you for using this server.</em></p>\n"
+		"\t</body>\n"
+		"</html>\n";
 	return page;
 }
 
 std::string Server::_makeDefaultErrorPage(const std::string &errorStr)
 {
-	std::string	error_page;
-	error_page = "<!DOCTYPE html>\n";
-	error_page += "<html>\n";
-	error_page += "\t<head><title>" + errorStr +"</title></head>\n";
-	error_page += "\t<body bgcolor=\"white\">\n";
-	error_page += "\t\t<center><h1>" + errorStr + "</h1></center>\n";
-	error_page += "\t\t<hr><center><a href=\"https://github.com/aquinoa-nba\">Aquinoa</a> & <a href=\"https://github.com/ShamilSE\">Mismene</a> server</center>\n";
-	error_page += "\t</body>\n";
-	error_page += "</html>\n";
+	std::string	error_page = ""
+		"<!DOCTYPE html>\n"
+		"<html>\n"
+		"\t<head><title>" + errorStr + "</title></head>\n"
+		"\t<body bgcolor=\"white\">\n"
+		"\t\t<center><h1>" + errorStr + "</h1></center>\n"
+		"\t\t<hr><center><a href=\"https://github.com/aquinoa-nba\">Aquinoa</a> & <a href=\"https://github.com/ShamilSE\">Mismene</a> server</center>\n"
+		"\t</body>\n"
+		"</html>\n";
 	return error_page;
 }
 
@@ -556,11 +549,11 @@ void	Server::_boundaryHandler(std::string &boundary, Client& client, std::string
 		client.allReadedBytesCount = 0;
 	}
 	std::string html = ""
-	"<html>\n"
-	"\t<body>\n"
-	"\t\t<h1>File uploaded.</h1>\n"
-	"\t</body>\n"
-	"</html>";
+		"<html>\n"
+		"\t<body>\n"
+		"\t\t<h1>File uploaded.</h1>\n"
+		"\t</body>\n"
+		"</html>";
 	client.setResponseContent(html);
 }
 

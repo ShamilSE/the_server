@@ -51,9 +51,6 @@ WebServ::WebServ(const std::string &conf) : _maxFd(-1)
 		} catch (const std::string &error) {
 			std::cerr << error << std::endl;
 			it = _servers.erase(it);
-			if (it == _servers.end())
-				break ;
-			continue ;
 		}
 	}
 }
